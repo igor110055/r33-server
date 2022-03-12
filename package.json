@@ -1,0 +1,46 @@
+{
+  "name": "r33-server",
+  "version": "0.0.1",
+  "description": "Node server for BASE R33",
+  "main": "src/app.ts",
+  "dependencies": {
+    "@netlify/functions": "^1.0.0",
+    "@nfteyez/sol-rayz": "^0.10.2",
+    "@solana/buffer-layout": "^4.0.0",
+    "@solana/spl-token": "^0.2.0-alpha.1",
+    "@solana/web3.js": "^1.36.0",
+    "@supabase/supabase-js": "^1.31.1",
+    "bip39": "^3.0.4",
+    "body-parser": "^1.19.2",
+    "date-fns": "^2.28.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.17.3"
+  },
+  "devDependencies": {
+    "@types/node": "^17.0.21",
+    "ts-node": "^10.7.0",
+    "ts-node-dev": "^1.1.8",
+    "typescript": "^4.6.2"
+  },
+  "scripts": {
+    "start": "ts-node ./src/server.ts",
+    "dev": "ts-node-dev ./src/server.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/duncan-iaria/r33-server.git"
+  },
+  "keywords": [
+    "r33",
+    "base",
+    "web3",
+    "tokenpayout"
+  ],
+  "author": "snoodleking",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/duncan-iaria/r33-server/issues"
+  },
+  "homepage": "https://github.com/duncan-iaria/r33-server#readme"
+}
