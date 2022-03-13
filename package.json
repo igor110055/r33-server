@@ -4,7 +4,6 @@
   "description": "Node server for BASE R33",
   "main": "src/app.ts",
   "dependencies": {
-    "@netlify/functions": "^1.0.0",
     "@nfteyez/sol-rayz": "^0.10.2",
     "@solana/buffer-layout": "^4.0.0",
     "@solana/spl-token": "^0.2.0-alpha.1",
