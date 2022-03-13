@@ -12,6 +12,7 @@
     "@supabase/supabase-js": "^1.31.1",
     "bip39": "^3.0.4",
     "body-parser": "^1.19.2",
+    "cors": "^2.8.5",
     "date-fns": "^2.28.0",
     "dotenv": "^16.0.0",
     "express": "^4.17.3"
