@@ -1,5 +1,5 @@
 export enum Route {
-  Payout = '/payout',
+  Transactions = '/transactions',
   Nft = '/nft',
   V1 = '/v1',
 }

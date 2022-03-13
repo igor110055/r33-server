@@ -2,6 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import { add, parseISO, isAfter, formatDistance } from 'date-fns';
 import dotenv from 'dotenv';
 
+// TODO seperate the cooldown from setting the transaction data.
+// TODO it's possible that the solana tx fails, therefore we either need
+// TODO to roll back the db entry, or just not make it in the first place
+// TODO should be the last step most likely
+
 dotenv.config();
 import { NFT, Wallet } from '../types';
 
