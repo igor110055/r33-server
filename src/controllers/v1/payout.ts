@@ -40,6 +40,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
     const recievingAddress = new PublicKey(receivingWalletAddress);
 
+    console.log(NETWORK_URL);
     const connection = new Connection(NETWORK_URL);
 
     await validateWalletAddress(receivingWalletAddress, connection);
