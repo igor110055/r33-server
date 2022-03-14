@@ -30,6 +30,7 @@ const NON_AUTHENTICATED_PAYOUT =
 const handlePayout = async (request: Request, response: Response, next: NextFunction) => {
   try {
     const { receivingWalletAddress, amount, source, nftAddress } = request.body;
+    console.log({ receivingWalletAddress, amount, source, nftAddress });
 
     if (amount > MAX_PAYOUT_ALLOWED) {
       throw new Error('Attempted to exceed maximum payout!');
