@@ -41,6 +41,8 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
     const recievingAddress = new PublicKey(receivingWalletAddress);
 
+    console.log('recieving public key', recievingAddress);
+
     console.log(NETWORK_URL);
     const connection = new Connection(NETWORK_URL);
 
@@ -82,6 +84,16 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       mintPublicKey,
       recievingAddress
     );
+
+    console.log('to account', toTokenAccount);
+    console.log({
+      connection,
+      gemWallet,
+      tokenAccountPublicKey,
+      toTokenAccountAddress: toTokenAccount.address,
+      getWalletPublicKey: gemWallet.publicKey,
+      payoutAmount,
+    });
 
     const txHash = await transfer(
       connection,
