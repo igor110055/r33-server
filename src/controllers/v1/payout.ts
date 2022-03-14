@@ -44,7 +44,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     console.log('recieving public key', recievingAddress);
 
     console.log(NETWORK_URL);
-    const connection = new Connection(NETWORK_URL);
+    const connection = new Connection(NETWORK_URL, 'confirmed');
 
     await validateWalletAddress(receivingWalletAddress, connection);
     await validateWalletAddress(gemWallet.publicKey.toBase58(), connection);
@@ -85,15 +85,15 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       recievingAddress
     );
 
-    console.log('to account', toTokenAccount);
-    console.log({
-      connection,
-      gemWallet,
-      tokenAccountPublicKey,
-      toTokenAccountAddress: toTokenAccount.address,
-      getWalletPublicKey: gemWallet.publicKey,
-      payoutAmount,
-    });
+    console.log('to account address', toTokenAccount.address);
+    // console.log({
+    //   connection,
+    //   gemWallet,
+    //   tokenAccountPublicKey,
+    //   toTokenAccountAddress: toTokenAccount.address,
+    //   getWalletPublicKey: gemWallet.publicKey,
+    //   payoutAmount,
+    // });
 
     const txHash = await transfer(
       connection,
