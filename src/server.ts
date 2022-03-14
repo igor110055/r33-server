@@ -21,7 +21,7 @@ const corsOptions = {
 };
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT;
 
 // Middleware
 app.use(cors(corsOptions));
@@ -32,5 +32,5 @@ app.use(bodyParser.json());
 app.use('/api', apiRouter);
 
 app.listen(port, () => {
-  console.log(`Example app listening on port ${port}`);
+  console.log(`R33 BASE listening on port ${port}...`);
 });

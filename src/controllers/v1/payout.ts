@@ -6,11 +6,22 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import { mnemonicToSeedSync } from 'bip39';
-import { PublicKey, Connection, Keypair } from '@solana/web3.js';
+import { PublicKey, Connection, Keypair, Commitment } from '@solana/web3.js';
 import { getOrCreateAssociatedTokenAccount, getAccount, transfer } from '@solana/spl-token';
 
-import { handleWalletCooldown, handleNftCooldown } from '../../utils';
-import { validateWalletAddress, isWalletAuthenticated } from '../../utils/wallet-utils';
+import {
+  validateWalletAddress,
+  isWalletAuthenticated,
+  isNftOnCooldown,
+  isWalletOnCooldown,
+  recordPayoutAndUpdateCooldownForNft,
+  recordPayoutAndUpdateCooldownForWallet,
+} from '../../utils';
+
+enum CoolDownType {
+  Nft,
+  Wallet,
+}
 
 // Offset to make the tokens into whole digits
 const SPL_TOKEN_DECIMAL_MULTIPLIER = parseInt(process.env.SPL_TOKEN_DECIMAL_MULTIPLIER);
@@ -21,17 +32,18 @@ const MAX_PAYOUT_ALLOWED = process.env.MAX_PAYOUT_ALLOWED;
 const WALLET_SEED_PHRASE = process.env.WALLET_SEED_PHRASE;
 const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
 const TOKEN_MINT_ADDRESS = process.env.TOKEN_MINT_ADDRESS;
+const CONNECTION_COMMITMENT_LEVEL = process.env.CONNECTION_COMMITMENT_LEVEL;
 const TOKEN_ACCOUNT_ADDRESS = process.env.TOKEN_ACCOUNT_ADDRESS;
 const NFT_AUTHENTICATED_PAYOUT =
   parseInt(process.env.NFT_AUTHENTICATED_PAYOUT) * SPL_TOKEN_DECIMAL_MULTIPLIER;
 const NON_AUTHENTICATED_PAYOUT =
   parseInt(process.env.NON_AUTHENTICATED_PAYOUT) * SPL_TOKEN_DECIMAL_MULTIPLIER;
+const NON_CONFIRMED_MESSAGE = 'Transaction was not confirmed in 30.00 seconds';
+const BLOCKHASH_NOT_FOUND = 'Blockhash not found';
 
 const handlePayout = async (request: Request, response: Response, next: NextFunction) => {
   try {
     const { receivingWalletAddress, amount, source, nftAddress } = request.body;
-    console.log({ receivingWalletAddress, amount, source, nftAddress });
-
     if (amount > MAX_PAYOUT_ALLOWED) {
       throw new Error('Attempted to exceed maximum payout!');
     }
@@ -41,7 +53,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
     const recievingAddress = new PublicKey(receivingWalletAddress);
 
-    const connection = new Connection(NETWORK_URL, 'confirmed');
+    const connection = new Connection(NETWORK_URL, CONNECTION_COMMITMENT_LEVEL as Commitment);
 
     await validateWalletAddress(receivingWalletAddress, connection);
     await validateWalletAddress(gemWallet.publicKey.toBase58(), connection);
@@ -57,21 +69,32 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     const tokenAccountPublicKey = new PublicKey(TOKEN_ACCOUNT_ADDRESS);
     const tokenAccount = await getAccount(connection, tokenAccountPublicKey);
 
-    console.log(`payoutAmount ${payoutAmount} > token account amount ${tokenAccount.amount}`);
+    console.log(
+      `payout initialized: remaining value after success: ${
+        Number(tokenAccount.amount) - payoutAmount
+      }`
+    );
 
     if (payoutAmount > tokenAccount.amount) {
       // TODO notify admins that we're out of tokens! (sms? email? discord notif?)
       throw new Error(`Out of gems today! ${tokenAccount.amount} gems remain.`);
     }
 
-    // DB section — keeping track of our current cooldowns
-    let dbWalletRes;
-    let dbNftRes;
-
+    const currentCooldownType = isAuthenticated ? CoolDownType.Nft : CoolDownType.Wallet;
     if (isAuthenticated) {
-      dbNftRes = await handleNftCooldown(nftAddress, payoutAmount, receivingWalletAddress);
+      const { isOnCooldown, timeToWaitString } = await isNftOnCooldown(nftAddress);
+      if (isOnCooldown) {
+        throw Error(
+          `NFT is still on cooldown. Please wait ${timeToWaitString} before trying again...`
+        );
+      }
     } else {
-      dbWalletRes = await handleWalletCooldown(receivingWalletAddress, payoutAmount);
+      const { isOnCooldown, timeToWaitString } = await isWalletOnCooldown(receivingWalletAddress);
+      if (isOnCooldown) {
+        throw Error(
+          `Wallet is still on cooldown. Please wait ${timeToWaitString} before trying again...`
+        );
+      }
     }
 
     // Get the token account of the toWallet address, and if it does not exist, create it
@@ -91,6 +114,23 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       payoutAmount
     );
 
+    let dbWalletRes;
+    let dbNftRes;
+
+    // Increment cooldowns and Payouts in our offchain DB
+    if (currentCooldownType === CoolDownType.Nft) {
+      dbNftRes = await recordPayoutAndUpdateCooldownForNft(
+        nftAddress,
+        payoutAmount,
+        receivingWalletAddress
+      );
+    } else {
+      dbWalletRes = await recordPayoutAndUpdateCooldownForWallet(
+        receivingWalletAddress,
+        payoutAmount
+      );
+    }
+
     const data = {
       receivingWalletAddress,
       currentGemBalance: tokenAccount.amount.toString(),
@@ -99,9 +139,9 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       gemWallet: gemWallet.publicKey.toBase58(),
       transactionHash: txHash,
       dbNftData: dbNftRes,
+      dbWalletData: dbWalletRes,
     };
 
-    console.log(data);
     response.send({
       statusCode: 200,
       body: {
@@ -110,10 +150,15 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       },
     });
   } catch (error) {
+    console.error(error);
     response.send({
       statusCode: 500,
       body: {
         message: error.message || error,
+        isRetryAllowed:
+          error.message &&
+          (error.message.includes(NON_CONFIRMED_MESSAGE) ||
+            error.message.includes(BLOCKHASH_NOT_FOUND)),
       },
     });
   }

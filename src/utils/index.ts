@@ -1,3 +1,8 @@
-export { handleNftCooldown, handleWalletCooldown } from './cooldowns';
-export { isWalletAuthenticated } from './wallet-utils';
+export {
+  recordPayoutAndUpdateCooldownForNft,
+  recordPayoutAndUpdateCooldownForWallet,
+  isNftOnCooldown,
+  isWalletOnCooldown,
+} from './cooldowns';
+export { isWalletAuthenticated, validateWalletAddress } from './wallet';
 export { getWhitelistFromEnv } from './whitelist';

@@ -2,13 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { add, parseISO, isAfter, formatDistance } from 'date-fns';
 import dotenv from 'dotenv';
 
-// TODO seperate the cooldown from setting the transaction data.
-// TODO it's possible that the solana tx fails, therefore we either need
-// TODO to roll back the db entry, or just not make it in the first place
-// TODO should be the last step most likely
-
 dotenv.config();
-import { NFT, Wallet } from '../types';
+import { getNftById, updateNftById, addNft } from '../repository/nfts';
+import { getWalletById, updateWalletById, addWallet } from '../repository/wallets';
 
 const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
 
@@ -17,42 +13,28 @@ const SPL_TOKEN_DECIMAL_MULTIPLIER = parseInt(process.env.SPL_TOKEN_DECIMAL_MULT
 const PAYOUT_COOLDOWN = JSON.parse(process.env.PAYOUT_COOLDOWN);
 const NETWORK = process.env.NETWORK;
 
-export async function handleNftCooldown(
+// Depreciated
+async function handleNftCooldown(
   nftAddress: string,
   payoutAmount: number,
   receivingWalletAddress: string
 ) {
-  const { data: nftData, error: nftDbError } = await supabase
-    .from<NFT>('nfts')
-    .select('*')
-    .eq('id', nftAddress);
-
-  const dbNft = nftData[0];
-  console.log(`nft data:`, nftData);
+  const dbNft = await getNftById(nftAddress);
 
   let dbNftRes;
   if (dbNft) {
-    console.log('found existing nft', dbNft);
     const nextPayoutTime = add(parseISO(dbNft.last_payout as string), PAYOUT_COOLDOWN);
-    console.log(dbNft.last_payout, typeof dbNft.last_payout);
+
     console.log(new Date(), ' >= ', nextPayoutTime, isAfter(new Date(), nextPayoutTime));
+
     if (isAfter(new Date(), nextPayoutTime)) {
       // payout
-      const { data: dbData, error: dbError } = await supabase
-        .from<NFT>('nfts')
-        .update({
-          total_payout: dbNft.total_payout + payoutAmount,
-          total_payout_for_ui: (dbNft.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
-          last_payout: new Date(),
-          wallet_owner: receivingWalletAddress,
-        })
-        .match({ id: nftAddress });
-
-      if (dbError) {
-        console.error(`nft db error: ${dbError.message}`);
-      } else {
-        dbNftRes = dbData;
-      }
+      dbNftRes = await updateNftById(nftAddress, {
+        total_payout: dbNft.total_payout + payoutAmount,
+        total_payout_for_ui: (dbNft.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
+        last_payout: new Date(),
+        wallet_owner: receivingWalletAddress,
+      });
     } else {
       // Don't payout...
       const timeToWaitString = formatDistance(nextPayoutTime, new Date());
@@ -60,58 +42,98 @@ export async function handleNftCooldown(
     }
   } else {
     // Add new NFT to the db
-    const { data: dbData, error: dbError } = await supabase.from<NFT>('nfts').insert([
-      {
-        id: nftAddress,
-        last_payout: new Date(),
-        wallet_owner: receivingWalletAddress,
-        total_payout: payoutAmount,
-        total_payout_for_ui: payoutAmount / SPL_TOKEN_DECIMAL_MULTIPLIER,
-        network: NETWORK,
-      },
-    ]);
-
-    if (dbError) {
-      console.error(`db error: ${dbError.message}`);
-    } else {
-      dbNftRes = dbData;
-    }
+    dbNftRes = addNft({
+      id: nftAddress,
+      last_payout: new Date(),
+      wallet_owner: receivingWalletAddress,
+      total_payout: payoutAmount,
+      total_payout_for_ui: payoutAmount / SPL_TOKEN_DECIMAL_MULTIPLIER,
+      network: NETWORK,
+    });
   }
 
   return dbNftRes;
 }
 
-export async function handleWalletCooldown(receivingWalletAddress: string, payoutAmount: number) {
-  console.log('expected payout', payoutAmount);
-  const { data: walletData, error: walletDbError } = await supabase
-    .from<Wallet>('wallets')
-    .select('*')
-    .eq('id', receivingWalletAddress);
+export async function isNftOnCooldown(
+  nftAddress: string
+): Promise<{ isOnCooldown: boolean; timeToWaitString?: string }> {
+  const dbNft = await getNftById(nftAddress);
+  const nextPayoutTime = add(parseISO(dbNft.last_payout as string), PAYOUT_COOLDOWN);
 
-  if (walletDbError) {
-    console.log('error getting wallet from db', walletDbError);
+  if (isAfter(new Date(), nextPayoutTime)) {
+    return { isOnCooldown: false, timeToWaitString: null };
   }
 
-  const dbWallet = walletData[0];
+  // Don't payout...
+  const timeToWaitString = formatDistance(nextPayoutTime, new Date());
+  return { isOnCooldown: true, timeToWaitString: timeToWaitString };
+}
+
+export async function recordPayoutAndUpdateCooldownForNft(
+  nftAddress: string,
+  payoutAmount: number,
+  walletAddress: string
+) {
+  const currentNftInDb = await getNftById(nftAddress);
+
+  if (!currentNftInDb) {
+    throw new Error(`Could not update NFT as no NFT with ${nftAddress} was found...`);
+  }
+
+  return await updateNftById(nftAddress, {
+    total_payout: currentNftInDb.total_payout + payoutAmount,
+    total_payout_for_ui:
+      (currentNftInDb.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
+    last_payout: new Date(),
+    wallet_owner: walletAddress,
+  });
+}
+
+export async function recordPayoutAndUpdateCooldownForWallet(
+  walletAddress: string,
+  payoutAmount: number
+) {
+  const currentDbWallet = await getWalletById(walletAddress);
+
+  if (!currentDbWallet) {
+    throw new Error(`Could not update Wallet as no Wallet with ${walletAddress} was found...`);
+  }
+
+  return await updateWalletById(walletAddress, {
+    total_payout: currentDbWallet.total_payout + payoutAmount,
+    total_payout_for_ui:
+      (currentDbWallet.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
+    last_payout: new Date(),
+  });
+}
+
+export async function isWalletOnCooldown(
+  walletAddress: string
+): Promise<{ isOnCooldown: boolean; timeToWaitString?: string }> {
+  const dbWallet = await getWalletById(walletAddress);
+  const nextPayoutTime = add(parseISO(dbWallet.last_payout as string), PAYOUT_COOLDOWN);
+  if (isAfter(new Date(), nextPayoutTime)) {
+    return { isOnCooldown: false };
+  }
+
+  const timeToWaitString = formatDistance(nextPayoutTime, new Date());
+  return { isOnCooldown: true, timeToWaitString: timeToWaitString };
+}
+
+// Depreciated
+async function handleWalletCooldown(receivingWalletAddress: string, payoutAmount: number) {
+  const dbWallet = await getWalletById(receivingWalletAddress);
 
   if (dbWallet) {
     // Wallet already exists in our system
     const nextPayoutTime = add(parseISO(dbWallet.last_payout as string), PAYOUT_COOLDOWN);
     if (isAfter(new Date(), nextPayoutTime)) {
-      const { data: dbData, error: dbError } = await supabase
-        .from<Wallet>('wallets')
-        .update({
-          total_payout: dbWallet.total_payout + payoutAmount,
-          total_payout_for_ui:
-            (dbWallet.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
-          last_payout: new Date(),
-        })
-        .match({ id: receivingWalletAddress });
-      if (dbError) {
-        console.log('database error updating wallet...', dbError);
-      } else {
-        return dbData;
-      }
+      return await updateWalletById(receivingWalletAddress, {
+        total_payout: dbWallet.total_payout + payoutAmount,
+        total_payout_for_ui: (dbWallet.total_payout + payoutAmount) / SPL_TOKEN_DECIMAL_MULTIPLIER,
+        last_payout: new Date(),
+      });
     } else {
       // TODO don't payout
       const timeToWaitString = formatDistance(nextPayoutTime, new Date());
@@ -119,20 +141,12 @@ export async function handleWalletCooldown(receivingWalletAddress: string, payou
     }
   } else {
     // Wallet does not exist, create one plz
-    const { data: dbData, error: dbError } = await supabase.from<Wallet>('wallets').insert([
-      {
-        id: receivingWalletAddress,
-        last_payout: new Date(),
-        total_payout: payoutAmount,
-        total_payout_for_ui: payoutAmount / SPL_TOKEN_DECIMAL_MULTIPLIER,
-        network: NETWORK,
-      },
-    ]);
-    if (dbError) {
-      console.log('Database error creating new wallet to track', dbError);
-    } else {
-      return dbData;
-    }
+    return await addWallet({
+      id: receivingWalletAddress,
+      last_payout: new Date(),
+      total_payout: payoutAmount,
+      total_payout_for_ui: payoutAmount / SPL_TOKEN_DECIMAL_MULTIPLIER,
+      network: NETWORK,
+    });
   }
-  return null;
 }

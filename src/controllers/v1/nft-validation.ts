@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 import { Router, Request, Response, NextFunction } from 'express';
 import { Connection } from '@solana/web3.js';
 
-import { isWalletAuthenticated } from '../../utils/wallet-utils';
+import { isWalletAuthenticated } from '../../utils/wallet';
 
 dotenv.config();
 
