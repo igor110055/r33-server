@@ -40,6 +40,8 @@ const NON_AUTHENTICATED_PAYOUT =
   parseInt(process.env.NON_AUTHENTICATED_PAYOUT) * SPL_TOKEN_DECIMAL_MULTIPLIER;
 const NON_CONFIRMED_MESSAGE = 'Transaction was not confirmed in 30.00 seconds';
 const BLOCKHASH_NOT_FOUND = 'Blockhash not found';
+const TX_SIMULATION_FAILED = 'Transaction simulation failed';
+const allRetryAllowedMessage = [NON_CONFIRMED_MESSAGE, BLOCKHASH_NOT_FOUND, TX_SIMULATION_FAILED];
 
 const handlePayout = async (request: Request, response: Response, next: NextFunction) => {
   try {
@@ -133,13 +135,9 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
 
     const data = {
       receivingWalletAddress,
-      currentGemBalance: tokenAccount.amount.toString(),
+      // currentGemBalance: tokenAccount.amount.toString(),
       amountPaidOut: payoutAmount,
-      source,
-      gemWallet: gemWallet.publicKey.toBase58(),
-      transactionHash: txHash,
-      dbNftData: dbNftRes,
-      dbWalletData: dbWalletRes,
+      txHash,
     };
 
     response.send({
@@ -151,14 +149,16 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     });
   } catch (error) {
     console.error(error);
+
+    let isRetryAllowed = allRetryAllowedMessage.some((retryAllowedErrorMessage: string) => {
+      return error?.message?.includes(retryAllowedErrorMessage);
+    });
+
     response.send({
       statusCode: 500,
       body: {
         message: error.message || error,
-        isRetryAllowed:
-          error.message &&
-          (error.message.includes(NON_CONFIRMED_MESSAGE) ||
-            error.message.includes(BLOCKHASH_NOT_FOUND)),
+        isRetryAllowed,
       },
     });
   }
