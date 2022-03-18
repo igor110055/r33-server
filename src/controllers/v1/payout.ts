@@ -135,7 +135,6 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
 
     const data = {
       receivingWalletAddress,
-      // currentGemBalance: tokenAccount.amount.toString(),
       amountPaidOut: payoutAmount,
       txHash,
     };
