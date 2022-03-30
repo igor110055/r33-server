@@ -159,10 +159,17 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       return error?.message?.includes(retryAllowedErrorMessage);
     });
 
+    // TokenAccountNotFound returning this to users
+    // body: {message: {name: "TokenAccountNotFoundError"}, isRetryAllowed: false}
+    // Looks like there is no message on the error, rather a name
+    if (!isRetryAllowed && error?.name === ACCOUNT_NOT_FOUND) {
+      isRetryAllowed = true;
+    }
+
     response.send({
       statusCode: 500,
       body: {
-        message: error.message || error,
+        message: error.message || error.name || error,
         isRetryAllowed,
       },
     });
