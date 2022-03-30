@@ -41,7 +41,13 @@ const NON_AUTHENTICATED_PAYOUT =
 const NON_CONFIRMED_MESSAGE = 'Transaction was not confirmed in 30.00 seconds';
 const BLOCKHASH_NOT_FOUND = 'Blockhash not found';
 const TX_SIMULATION_FAILED = 'Transaction simulation failed';
-const allRetryAllowedMessage = [NON_CONFIRMED_MESSAGE, BLOCKHASH_NOT_FOUND, TX_SIMULATION_FAILED];
+const ACCOUNT_NOT_FOUND = 'TokenAccountNotFoundError';
+const allRetryAllowedMessage = [
+  NON_CONFIRMED_MESSAGE,
+  BLOCKHASH_NOT_FOUND,
+  TX_SIMULATION_FAILED,
+  ACCOUNT_NOT_FOUND,
+];
 
 const handlePayout = async (request: Request, response: Response, next: NextFunction) => {
   try {
