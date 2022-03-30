@@ -125,7 +125,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     let dbWalletRes;
     let dbNftRes;
 
-    // Increment cooldowns and Payouts in our offchain DB
+    // Increment cooldowns and Payouts in our offchain DB -
     if (currentCooldownType === CoolDownType.Nft) {
       dbNftRes = await recordPayoutAndUpdateCooldownForNft(
         nftAddress,
