@@ -110,7 +110,10 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       connection,
       gemWallet,
       mintPublicKey,
-      recievingAddress
+      recievingAddress,
+      undefined,
+      'finalized',
+      { maxRetries: 5, commitment: 'finalized', skipPreflight: false }
     );
 
     const txHash = await transfer(
