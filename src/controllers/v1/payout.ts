@@ -7,7 +7,12 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { mnemonicToSeedSync } from 'bip39';
 import { PublicKey, Connection, Keypair, Commitment } from '@solana/web3.js';
-import { getOrCreateAssociatedTokenAccount, getAccount, transfer } from '@solana/spl-token';
+import {
+  getOrCreateAssociatedTokenAccount,
+  getAccount,
+  transfer,
+  TokenAccountNotFoundError,
+} from '@solana/spl-token';
 
 import {
   validateWalletAddress,
@@ -116,6 +121,8 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       { maxRetries: 5, commitment: 'finalized', skipPreflight: false }
     );
 
+    console.log('to token account:', toTokenAccount);
+
     const txHash = await transfer(
       connection,
       gemWallet,
@@ -165,11 +172,12 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     // TokenAccountNotFound returning this to users
     // body: {message: {name: "TokenAccountNotFoundError"}, isRetryAllowed: false}
     // Looks like there is no message on the error, rather a name
-    if (!isRetryAllowed && error?.name === ACCOUNT_NOT_FOUND) {
+    if (error instanceof TokenAccountNotFoundError) {
+      error.message = 'Token account not found, please try again...';
       isRetryAllowed = true;
     }
 
-    response.send({
+    response.code(500).send({
       statusCode: 500,
       body: {
         message: error.message || error.name || error,
