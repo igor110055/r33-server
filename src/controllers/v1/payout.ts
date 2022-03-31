@@ -174,7 +174,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       isRetryAllowed = true;
     }
 
-    response.code(500).send({
+    response.status(500).send({
       statusCode: 500,
       body: {
         message: error.message || error.name || error,
