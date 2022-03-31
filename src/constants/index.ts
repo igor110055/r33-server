@@ -3,4 +3,5 @@ export enum Route {
   Nft = '/nft',
   V1 = '/v1',
   HealthCheck = '/health-check',
+  Account = '/account',
 }

@@ -4,5 +4,5 @@ export {
   isNftOnCooldown,
   isWalletOnCooldown,
 } from './cooldowns';
-export { isWalletAuthenticated, validateWalletAddress } from './wallet';
+export { isWalletAuthenticated, validateWalletAddress, getServerWallet } from './wallet';
 export { getWhitelistFromEnv } from './whitelist';

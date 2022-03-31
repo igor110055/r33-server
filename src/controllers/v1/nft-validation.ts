@@ -8,7 +8,7 @@ dotenv.config();
 
 const NETWORK_URL = process.env.NETWORK_URL;
 
-const handlerNftAuthentication = async (
+const handleNftAuthentication = async (
   request: Request,
   response: Response,
   next: NextFunction
@@ -24,14 +24,14 @@ const handlerNftAuthentication = async (
   });
 
   return isAuthenticated
-    ? response.send({
+    ? response.status(200).send({
         statusCode: 200,
         body: {
           message: 'nft auth',
           isAuthenticated,
         },
       })
-    : response.send({
+    : response.status(401).send({
         statusCode: 401,
         body: {
           message: 'auth failed!',
@@ -42,6 +42,6 @@ const handlerNftAuthentication = async (
 
 // Route assignments
 const nftRouter = Router();
-nftRouter.post(`/authenticate`, handlerNftAuthentication);
+nftRouter.post(`/authenticate`, handleNftAuthentication);
 
 export { nftRouter };

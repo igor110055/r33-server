@@ -1,10 +1,15 @@
-import { Connection } from '@solana/web3.js';
+import { PublicKey, Connection, Keypair } from '@solana/web3.js';
 import { resolveToWalletAddress, getParsedNftAccountsByOwner } from '@nfteyez/sol-rayz';
+import { mnemonicToSeedSync } from 'bip39';
 
 // NFT Constants
 const NFT_SYMBOL = process.env.NFT_SYMBOL;
 const UPDATE_AUTHORITY_ADDRESS = process.env.UPDATE_AUTHORITY_ADDRESS;
 const FIRST_CREATOR = process.env.FIRST_CREATOR;
+
+// Wallet constants
+const WALLET_SEED_PHRASE = process.env.WALLET_SEED_PHRASE;
+const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
 
 export const validateWalletAddress = async (address: string, connection: Connection) => {
   try {
@@ -55,4 +60,15 @@ export async function isNftValid(nft) {
 export function walletSeedUint8Array(seedString) {
   const json = JSON.parse(seedString);
   return Uint8Array.from(json.slice(0, 32));
+}
+
+export function getServerWallet() {
+  const gemWalletSeed = mnemonicToSeedSync(WALLET_SEED_PHRASE, WALLET_PASS_PHRASE).slice(0, 32);
+  const gemWallet = Keypair.fromSeed(gemWalletSeed);
+  const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
+
+  return {
+    gemWallet,
+    gemWalletPublicKey,
+  };
 }

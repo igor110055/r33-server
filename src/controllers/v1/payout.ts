@@ -21,6 +21,7 @@ import {
   isWalletOnCooldown,
   recordPayoutAndUpdateCooldownForNft,
   recordPayoutAndUpdateCooldownForWallet,
+  getServerWallet,
 } from '../../utils';
 
 enum CoolDownType {
@@ -34,11 +35,9 @@ const SPL_TOKEN_DECIMAL_MULTIPLIER = parseInt(process.env.SPL_TOKEN_DECIMAL_MULT
 // Transaction Constants
 const NETWORK_URL = process.env.NETWORK_MAINNET_URL;
 const MAX_PAYOUT_ALLOWED = process.env.MAX_PAYOUT_ALLOWED;
-const WALLET_SEED_PHRASE = process.env.WALLET_SEED_PHRASE;
-const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
-const TOKEN_MINT_ADDRESS = process.env.TOKEN_MINT_ADDRESS;
 const CONNECTION_COMMITMENT_LEVEL = process.env.CONNECTION_COMMITMENT_LEVEL;
 const TOKEN_ACCOUNT_ADDRESS = process.env.TOKEN_ACCOUNT_ADDRESS;
+const TOKEN_MINT_ADDRESS = process.env.TOKEN_MINT_ADDRESS;
 const NFT_AUTHENTICATED_PAYOUT =
   parseInt(process.env.NFT_AUTHENTICATED_PAYOUT) * SPL_TOKEN_DECIMAL_MULTIPLIER;
 const NON_AUTHENTICATED_PAYOUT =
@@ -61,9 +60,7 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       throw new Error('Attempted to exceed maximum payout!');
     }
 
-    const gemWalletSeed = mnemonicToSeedSync(WALLET_SEED_PHRASE, WALLET_PASS_PHRASE).slice(0, 32);
-    const gemWallet = Keypair.fromSeed(gemWalletSeed);
-    const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
+    const { gemWallet } = getServerWallet();
     const recievingAddress = new PublicKey(receivingWalletAddress);
 
     const connection = new Connection(NETWORK_URL, CONNECTION_COMMITMENT_LEVEL as Commitment);
@@ -117,11 +114,11 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       mintPublicKey,
       recievingAddress,
       undefined,
-      'finalized',
-      { maxRetries: 5, commitment: 'finalized', skipPreflight: false }
+      'confirmed',
+      { maxRetries: 5, commitment: 'confirmed', skipPreflight: false }
     );
 
-    console.log('to token account:', toTokenAccount);
+    console.log('to token account:', toTokenAccount.address.toBase58());
 
     const txHash = await transfer(
       connection,
