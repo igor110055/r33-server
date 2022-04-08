@@ -1,15 +1,9 @@
 import { PublicKey, Connection, Keypair } from '@solana/web3.js';
 import { resolveToWalletAddress, getParsedNftAccountsByOwner } from '@nfteyez/sol-rayz';
 import { mnemonicToSeedSync } from 'bip39';
+import { isValidForgebotNft } from './nfts';
 
-// NFT Constants
-const NFT_SYMBOL = process.env.NFT_SYMBOL;
-const UPDATE_AUTHORITY_ADDRESS = process.env.UPDATE_AUTHORITY_ADDRESS;
-const FIRST_CREATOR = process.env.FIRST_CREATOR;
-
-// Wallet constants
-const WALLET_SEED_PHRASE = process.env.WALLET_SEED_PHRASE;
-const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
+import { WALLET_PASS_PHRASE, WALLET_SEED_PHRASE } from '../constants';
 
 export const validateWalletAddress = async (address: string, connection: Connection) => {
   try {
@@ -32,7 +26,7 @@ export async function isWalletAuthenticated({
   const nft = walletNfts.find((nft) => nft.mint === nftAddress);
 
   if (nft) {
-    return isNftValid(nft);
+    return isValidForgebotNft(nft);
   } else {
     return false;
   }
@@ -46,15 +40,6 @@ export async function isNftInWallet({ walletAddress, nftAddress, connection }): 
 
   const nft = walletNfts.find((nft) => nft.mint === nftAddress);
   return nft ? true : false;
-}
-
-// A valid NFT in this case is just one that if from a particular collection
-export async function isNftValid(nft) {
-  return (
-    nft.data.symbol === NFT_SYMBOL &&
-    nft.updateAuthority === UPDATE_AUTHORITY_ADDRESS &&
-    nft.data?.creators[0]?.address === FIRST_CREATOR
-  );
 }
 
 export function walletSeedUint8Array(seedString) {

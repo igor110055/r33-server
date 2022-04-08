@@ -1,8 +1,10 @@
 import dotenv from 'dotenv';
 import { Router, Request, Response, NextFunction } from 'express';
 import { Connection } from '@solana/web3.js';
+import { getParsedNftAccountsByOwner } from '@nfteyez/sol-rayz';
 
 import { isWalletAuthenticated } from '../../utils/wallet';
+import { isValidCompanionNft } from '../../utils/nfts';
 
 dotenv.config();
 
@@ -40,8 +42,36 @@ const handleNftAuthentication = async (
       });
 };
 
+const getForgeBotCompanionNfts = async (
+  request: Request,
+  response: Response,
+  next: NextFunction
+) => {
+  const { walletAddress } = request.query;
+  const connection = new Connection(NETWORK_URL);
+
+  // TODO loop through all NFTs that match the companions NFT and return
+  // In a good format for unity
+  const walletNfts = await getParsedNftAccountsByOwner({
+    publicAddress: walletAddress,
+    connection,
+  });
+
+  const companionNfts = walletNfts.filter(isValidCompanionNft);
+
+  console.log('wallet companions: ', companionNfts);
+
+  response.status(200).send({
+    statusCode: 200,
+    body: {
+      message: 'wallets companions',
+      companionNfts,
+    },
+  });
+};
+
 // Route assignments
 const nftRouter = Router();
 nftRouter.post(`/authenticate`, handleNftAuthentication);
-
+nftRouter.get('/companions', getForgeBotCompanionNfts);
 export { nftRouter };
