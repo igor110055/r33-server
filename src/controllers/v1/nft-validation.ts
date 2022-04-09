@@ -4,7 +4,7 @@ import { Connection } from '@solana/web3.js';
 import { getParsedNftAccountsByOwner } from '@nfteyez/sol-rayz';
 
 import { isWalletAuthenticated } from '../../utils/wallet';
-import { isValidCompanionNft } from '../../utils/nfts';
+import { isValidCompanionNft, getNftMetadata, formatCompanionNft } from '../../utils/nfts';
 
 dotenv.config();
 
@@ -60,12 +60,20 @@ const getForgeBotCompanionNfts = async (
   const companionNfts = walletNfts.filter(isValidCompanionNft);
 
   console.log('wallet companions: ', companionNfts);
+  const metaDataFetchers = companionNfts.map(async (tempNft) => await getNftMetadata(tempNft));
+  const metaDataResults = await Promise.all(metaDataFetchers);
+
+  const formattedCompanionNfts = metaDataResults.map(formatCompanionNft);
+
+  // console.info('meta data results', metaDataResults);
+  // console.info('meta data attributes', metaDataResults[0]?.attributes);
 
   response.status(200).send({
     statusCode: 200,
     body: {
       message: 'wallets companions',
-      companionNfts,
+      companionNfts: formattedCompanionNfts,
+      metadata: metaDataResults,
     },
   });
 };

@@ -6,6 +6,6 @@
     "rootDir": "./src",
     "sourceMap": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "babel.config.js"],
   "exclude": ["node_modules"]
 }

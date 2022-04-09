@@ -1,3 +1,4 @@
+import { Connection } from '@solana/web3.js';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -19,3 +20,7 @@ export const COMPANION_CREATOR = process.env.COMPANION_CREATOR;
 // Wallet constants
 export const WALLET_SEED_PHRASE = process.env.WALLET_SEED_PHRASE;
 export const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
+
+// Network
+export const NETWORK_URL = process.env.NETWORK_URL;
+export const connection = new Connection(NETWORK_URL);
