@@ -76,7 +76,6 @@ export function getCompanionTypeId(companionNft) {
     }
   } else {
     const tempRarity = tempName.split(' ')[0];
-    console.log('rarity', tempRarity);
     return companionTypeIds[tempRarity.toLowerCase()];
   }
 }

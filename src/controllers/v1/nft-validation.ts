@@ -50,8 +50,6 @@ const getForgeBotCompanionNfts = async (
   const { walletAddress } = request.query;
   const connection = new Connection(NETWORK_URL);
 
-  // TODO loop through all NFTs that match the companions NFT and return
-  // In a good format for unity
   const walletNfts = await getParsedNftAccountsByOwner({
     publicAddress: walletAddress,
     connection,
@@ -59,21 +57,16 @@ const getForgeBotCompanionNfts = async (
 
   const companionNfts = walletNfts.filter(isValidCompanionNft);
 
-  console.log('wallet companions: ', companionNfts);
   const metaDataFetchers = companionNfts.map(async (tempNft) => await getNftMetadata(tempNft));
   const metaDataResults = await Promise.all(metaDataFetchers);
 
   const formattedCompanionNfts = metaDataResults.map(formatCompanionNft);
-
-  // console.info('meta data results', metaDataResults);
-  // console.info('meta data attributes', metaDataResults[0]?.attributes);
 
   response.status(200).send({
     statusCode: 200,
     body: {
       message: 'wallets companions',
       companionNfts: formattedCompanionNfts,
-      metadata: metaDataResults,
     },
   });
 };
