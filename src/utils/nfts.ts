@@ -87,8 +87,8 @@ export function formatCompanionNft(tempCompanionNft) {
     color: tempCompanionNft.metadata.attributes.find(
       (attribute) => attribute.trait_type === 'Body Color'
     )?.value,
-    image: tempCompanionNft.metadata.image,
-    model: tempCompanionNft.metadata.animation_url,
-    companionTypeId: getCompanionTypeId(tempCompanionNft),
+    imageUri: tempCompanionNft.metadata.image,
+    modelUri: tempCompanionNft.metadata.animation_url,
+    typeId: getCompanionTypeId(tempCompanionNft),
   };
 }
