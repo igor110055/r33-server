@@ -69,7 +69,7 @@ export function getCompanionTypeId(companionNft) {
     switch (tempColor) {
       case 'Teal':
         return companionTypeIds.uncommonTeal;
-      case 'Orage':
+      case 'Orange':
         return companionTypeIds.uncommonOrange;
       default:
         return companionTypeIds.uncommonOrange;

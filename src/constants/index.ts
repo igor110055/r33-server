@@ -8,6 +8,8 @@ export enum Route {
   V1 = '/v1',
   HealthCheck = '/health-check',
   Account = '/account',
+  Staking = '/staking',
+  Authentication = '/authentication',
 }
 
 // NFT Constants
