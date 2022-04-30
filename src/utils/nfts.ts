@@ -36,6 +36,15 @@ export async function getNftMetadata(nft) {
   }
 }
 
+export async function getNftMetadataFromUri(uri) {
+  try {
+    const response = await axios.get(uri);
+    return response.data;
+  } catch (error) {
+    console.log('Failed to fetch metadata', error);
+  }
+}
+
 const companionTypeIds = {
   commonWhite: 'common_white',
   commonRed: 'common_red',

@@ -4,6 +4,7 @@
   "description": "Node server for BASE R33",
   "main": "src/app.ts",
   "dependencies": {
+    "@metaplex-foundation/mpl-token-metadata": "^2.1.1",
     "@nfteyez/sol-rayz": "^0.10.2",
     "@solana/buffer-layout": "^4.0.0",
     "@solana/spl-token": "^0.2.0-alpha.1",
@@ -40,7 +41,8 @@
     "start": "node ./dist/server.js",
     "dev": "ts-node-dev ./src/server.ts",
     "test": "jest",
-    "build": "tsc"
+    "build": "tsc",
+    "upload-fb-data": "ts-node-dev ./src/data/upload-forgebot-data.ts"
   },
   "repository": {
     "type": "git",
