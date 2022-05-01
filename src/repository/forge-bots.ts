@@ -21,3 +21,18 @@ export async function addForgeBot(forgeBot: Omit<ForgeBot, 'created_at'>) {
 
   return data;
 }
+
+export async function addMultipleForgeBot(
+  forgeBots: Array<Omit<ForgeBot, 'created_at'>>
+) {
+  const { data, error } = await supabase
+    .from<ForgeBot>('forgebots')
+    .insert([...forgeBots]);
+
+  if (error) {
+    console.error(error);
+    throw Error(`Error adding new ForgeBot to DB: ${error.message}`);
+  }
+
+  return data;
+}

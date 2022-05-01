@@ -26,6 +26,8 @@ export type ForgeBot = {
   is_overseer: boolean;
   is_staked: boolean;
   image_url?: string;
+  attributes?: any; // TODO type this appropriately
+  name?: string;
 };
 
 export type Companion = {

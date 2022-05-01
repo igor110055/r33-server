@@ -1,39 +1,34 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { Connection, PublicKey } from '@solana/web3.js';
-import { getSolanaMetadataAddress } from '@nfteyez/sol-rayz';
-import { Metadata } from '@metaplex-foundation/mpl-token-metadata';
-
 import forgeBots from './forgebots.json';
+import { addForgeBot, addMultipleForgeBot } from '../repository/forge-bots';
 import { ForgeBot } from '../types';
-import { getNftMetadataFromUri } from '../utils';
+import { getNftMetaDataFromTokenAddress, sleep } from '../utils';
 
-const NETWORK_URL = process.env.NETWORK_URL;
-const connection = new Connection(NETWORK_URL);
+const META_DATA_REQUEST_DELAY_MS = 125;
+const AFTER_THROTTLE_DELAY_MS = 30000;
 
 // Gets the metadata about the forgebot and uses that to
 // Create a format that our database expects
-async function formatForgeBot(forgeBotMintAddress: string): Promise<ForgeBot> {
-  const mintPubKey = new PublicKey(forgeBotMintAddress);
-  const metaDataAccountAddress = await getSolanaMetadataAddress(mintPubKey);
-  const tokenMeta = await Metadata.fromAccountAddress(connection, metaDataAccountAddress);
-  const tempMetaDataUri = tokenMeta?.data?.uri?.replace?.(/\0/g, '');
+async function formatForgeBot(
+  forgeBotMintAddress: string,
+  isLoggingEnabled: boolean = false
+): Promise<ForgeBot> {
+  const metadata = await getNftMetaDataFromTokenAddress(forgeBotMintAddress);
 
-  const metadata = await getNftMetadataFromUri(tempMetaDataUri);
-
-  console.log({
-    tokenMeta,
-    tempMetaDataUri,
-    metadata,
-    attributes: metadata?.attributes,
-  });
+  if (isLoggingEnabled) {
+    console.log({
+      // tokenMetaData,
+      // tempMetaDataUri,
+      metadata,
+      // attributes: metadata?.attributes,
+    });
+  }
 
   const isOverseer = metadata?.attributes.some(
     (tempAttribute) => tempAttribute.value === 'Overseer'
   );
-
-  console.log('is overseer', isOverseer);
 
   return {
     mint_address: forgeBotMintAddress,
@@ -42,13 +37,69 @@ async function formatForgeBot(forgeBotMintAddress: string): Promise<ForgeBot> {
     is_overseer: isOverseer,
     is_staked: false,
     image_url: metadata?.image,
+    attributes: metadata?.attributes,
+    name: metadata?.name,
   };
 }
 
-function run() {
-  console.log(`forgebot mint address: ${forgeBots[0]}`);
-  formatForgeBot(forgeBots[0]);
-  // formatForgeBot('9hMemsa1KbqQLacuBy1aUWHWtgEQRmXmpimc5tR17CoX');
-}
+const seedFbData = async (indexToStartAt?: number) => {
+  let formattedForgeBotData: ForgeBot[] = [];
+  let batchesUploaded = 0;
+  let currentBotIndex = indexToStartAt ?? 0;
 
-run();
+  for (const tempForgeBot of forgeBots) {
+    if (forgeBots.indexOf(tempForgeBot) !== currentBotIndex) {
+      // Keep moving if this index isn't the right one
+      continue;
+    }
+
+    try {
+      const formattedForgeBot = await formatForgeBot(tempForgeBot);
+      const result = await addForgeBot(formattedForgeBot);
+
+      // formattedForgeBotData.push(formattedForgeBot);
+
+      console.log(
+        `fb: ${currentBotIndex} / ${forgeBots.length} formatted ${formattedForgeBot.name}... bucketsize ${formattedForgeBotData.length} `
+      );
+
+      currentBotIndex++;
+    } catch (error) {
+      console.log(error);
+
+      // To avoid throttling...
+      await sleep(AFTER_THROTTLE_DELAY_MS);
+      seedFbData(currentBotIndex);
+      return;
+    }
+
+    // To avoid throttling...
+    await sleep(META_DATA_REQUEST_DELAY_MS);
+
+    // Uploading in chunks of 100 to the db...
+    // if (
+    //   formattedForgeBotData.length % 50 === 0 ||
+    //   currentBotIndex === forgeBots.length - 1
+    // ) {
+    //   try {
+    //     console.log(
+    //       `uploading batch ${batchesUploaded} of ... ${formattedForgeBotData.length}`
+    //     );
+    //     const result = await addMultipleForgeBot(formattedForgeBotData);
+    //     batchesUploaded++;
+    //     // Upload complete, purge the previous 100 from mem
+    //     formattedForgeBotData = [];
+    //   } catch (error) {
+    //     console.log('Error bulk uploading bots...', error, '\n\n');
+    //     console.log(`current bot: ${currentBotIndex}`);
+    //     return;
+    //   }
+    // }
+  }
+
+  // const result = await addForgeBot(tempFbData);
+
+  console.log(`\n\n UPLOAD COMPLETE... \n\n`);
+};
+
+seedFbData();

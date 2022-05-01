@@ -42,7 +42,7 @@
     "dev": "ts-node-dev ./src/server.ts",
     "test": "jest",
     "build": "tsc",
-    "upload-fb-data": "ts-node-dev ./src/data/upload-forgebot-data.ts"
+    "seed-forgebot-data": "ts-node ./src/data/upload-forgebot-data.ts"
   },
   "repository": {
     "type": "git",

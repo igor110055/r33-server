@@ -1,4 +1,15 @@
+import dotenv from 'dotenv';
 import axios from 'axios';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { getSolanaMetadataAddress } from '@nfteyez/sol-rayz';
+import { Metadata } from '@metaplex-foundation/mpl-token-metadata';
+
+dotenv.config();
+
+const NETWORK_URL = process.env.NETWORK_URL;
+
+// Processed commitment as these are read only situations
+const connection = new Connection(NETWORK_URL, 'processed');
 
 import {
   NFT_SYMBOL,
@@ -22,6 +33,22 @@ export function isValidCompanionNft(nft) {
     nft.updateAuthority === UPDATE_AUTHORITY_ADDRESS &&
     nft.data?.creators[0]?.address === COMPANION_CREATOR
   );
+}
+
+export async function getNftMetaDataFromTokenAddress(tokenMintAddress) {
+  const mintPubKey = new PublicKey(tokenMintAddress);
+  const metaDataAccountAddress = await getSolanaMetadataAddress(mintPubKey);
+  const tokenMetaData = await Metadata.fromAccountAddress(
+    connection,
+    metaDataAccountAddress
+  );
+
+  // Clean all the junk off the end of the URL
+  const tempMetaDataUri = tokenMetaData?.data?.uri?.replace?.(/\0/g, '');
+
+  const metadata = await getNftMetadataFromUri(tempMetaDataUri);
+
+  return metadata;
 }
 
 export async function getNftMetadata(nft) {
