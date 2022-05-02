@@ -26,7 +26,7 @@ export type ForgeBot = {
   is_overseer: boolean;
   is_staked: boolean;
   image_url?: string;
-  attributes?: any; // TODO type this appropriately
+  attributes?: Attribute[];
   name?: string;
 };
 
@@ -37,6 +37,14 @@ export type Companion = {
   linked_forgebot?: ForgeBot;
   is_staked?: boolean;
   image_url?: string;
+  attributes?: Attribute[];
+  name?: string;
+  avatar_asset_url?: string;
+};
+
+type Attribute = {
+  trait_type: string;
+  value: string;
 };
 
 export type Account = {

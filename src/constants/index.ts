@@ -10,7 +10,12 @@ export enum Route {
   Account = '/account',
   Staking = '/staking',
   Authentication = '/authentication',
+  TokenAccount = '/token-account',
 }
+
+// Seeding constants
+export const META_DATA_REQUEST_DELAY_MS = 125;
+export const AFTER_THROTTLE_DELAY_MS = 30000;
 
 // NFT Constants
 export const NFT_SYMBOL = process.env.NFT_SYMBOL;

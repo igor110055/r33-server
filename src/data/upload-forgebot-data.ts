@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import forgeBots from './forgebots.json';
-import { addForgeBot, addMultipleForgeBot } from '../repository/forge-bots';
+import { addForgeBot } from '../repository/forge-bots';
 import { ForgeBot } from '../types';
 import { getNftMetaDataFromTokenAddress, sleep } from '../utils';
 
@@ -44,7 +44,6 @@ async function formatForgeBot(
 
 const seedFbData = async (indexToStartAt?: number) => {
   let formattedForgeBotData: ForgeBot[] = [];
-  let batchesUploaded = 0;
   let currentBotIndex = indexToStartAt ?? 0;
 
   for (const tempForgeBot of forgeBots) {
@@ -75,29 +74,7 @@ const seedFbData = async (indexToStartAt?: number) => {
 
     // To avoid throttling...
     await sleep(META_DATA_REQUEST_DELAY_MS);
-
-    // Uploading in chunks of 100 to the db...
-    // if (
-    //   formattedForgeBotData.length % 50 === 0 ||
-    //   currentBotIndex === forgeBots.length - 1
-    // ) {
-    //   try {
-    //     console.log(
-    //       `uploading batch ${batchesUploaded} of ... ${formattedForgeBotData.length}`
-    //     );
-    //     const result = await addMultipleForgeBot(formattedForgeBotData);
-    //     batchesUploaded++;
-    //     // Upload complete, purge the previous 100 from mem
-    //     formattedForgeBotData = [];
-    //   } catch (error) {
-    //     console.log('Error bulk uploading bots...', error, '\n\n');
-    //     console.log(`current bot: ${currentBotIndex}`);
-    //     return;
-    //   }
-    // }
   }
-
-  // const result = await addForgeBot(tempFbData);
 
   console.log(`\n\n UPLOAD COMPLETE... \n\n`);
 };

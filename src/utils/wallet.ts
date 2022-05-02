@@ -32,7 +32,11 @@ export async function isWalletAuthenticated({
   }
 }
 
-export async function isNftInWallet({ walletAddress, nftAddress, connection }): Promise<boolean> {
+export async function isNftInWallet({
+  walletAddress,
+  nftAddress,
+  connection,
+}): Promise<boolean> {
   const walletNfts = await getParsedNftAccountsByOwner({
     publicAddress: walletAddress,
     connection,
@@ -48,7 +52,10 @@ export function walletSeedUint8Array(seedString) {
 }
 
 export function getServerWallet() {
-  const gemWalletSeed = mnemonicToSeedSync(WALLET_SEED_PHRASE, WALLET_PASS_PHRASE).slice(0, 32);
+  const gemWalletSeed = mnemonicToSeedSync(WALLET_SEED_PHRASE, WALLET_PASS_PHRASE).slice(
+    0,
+    32
+  );
   const gemWallet = Keypair.fromSeed(gemWalletSeed);
   const gemWalletPublicKey = new PublicKey(gemWallet.publicKey);
 
