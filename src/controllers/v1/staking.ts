@@ -6,14 +6,18 @@ import {
   setCompanionUnstaked,
   setForgeBotStaked,
   setForgeBotUnstaked,
+  unstakePreviouslyLinkedCompanion,
 } from '../../utils';
 
 async function handleStakeForgeBot(request: Request, response: Response) {
   const { forgeBotNftAddress, walletAddress, companionNftAddress } = request.body;
   let updatedCompanion = null;
   let updatedForgeBot = null;
+  let previousCompanion = null;
 
   try {
+    previousCompanion = await unstakePreviouslyLinkedCompanion(forgeBotNftAddress);
+
     // Doing this method so we can call at the same time
     const stakingRequests: Promise<ForgeBot | Companion>[] = [
       setForgeBotStaked({
@@ -34,19 +38,6 @@ async function handleStakeForgeBot(request: Request, response: Response) {
     }
 
     const [updatedForgeBot, updatedCompanion] = await Promise.all(stakingRequests);
-    // updatedForgeBot = await setForgeBotStaked({
-    //   walletAddress,
-    //   forgeBotMintAddress: forgeBotNftAddress,
-    //   linkedCompanionAddress: companionNftAddress,
-    // });
-
-    // if (companionNftAddress) {
-    //   updatedCompanion = await setCompanionStaked({
-    //     mintAddress: companionNftAddress,
-    //     linkedForgeBotAddress: forgeBotNftAddress,
-    //     walletAddress,
-    //   });
-    // }
 
     return response.json({
       code: 200,
@@ -64,6 +55,14 @@ async function handleStakeForgeBot(request: Request, response: Response) {
 
     if (updatedForgeBot) {
       await setForgeBotUnstaked(updatedForgeBot.mint_address);
+    }
+
+    if (previousCompanion) {
+      await setCompanionStaked({
+        mintAddress: previousCompanion,
+        linkedForgeBotAddress: forgeBotNftAddress,
+        walletAddress,
+      });
     }
 
     return response.status(500).json({

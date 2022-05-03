@@ -54,13 +54,7 @@ export async function isCompanionEligibleForStaking(
       connection: processedConnection,
     });
 
-    const isForgeBotOwnedByWallet = await isNftInWallet({
-      walletAddress,
-      nftAddress: linkedForgetBotAddress,
-      connection: processedConnection,
-    });
-
-    if (!isCompanionOwnedByWallet || !isForgeBotOwnedByWallet) {
+    if (!isCompanionOwnedByWallet) {
       throw Error(
         `${mintAddress} Companion or Linked ForgeBot NFT is not owned by this wallet.`
       );

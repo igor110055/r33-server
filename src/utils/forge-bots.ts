@@ -5,6 +5,7 @@ import {
   getForgeBotById,
   setForgeBotStaked as setForgeBotStakedApi,
   setForgeBotUnstaked as setForgeBotUnstakedApi,
+  setCompanionUnstaked,
 } from '../repository';
 
 export async function setForgeBotStaked({
@@ -55,19 +56,16 @@ export async function isForgeBotEligibleForStaking({
     );
   }
 
-  if (linkedCompanionAddress) {
-    const isCompanionOwnedByWallet = await isNftInWallet({
-      walletAddress,
-      nftAddress: linkedCompanionAddress,
-      connection: processedConnection,
-    });
+  return true;
+}
 
-    if (!isCompanionOwnedByWallet) {
-      throw Error(
-        'Companion not owned by wallet, could not set ForgeBot in the staked status!'
-      );
-    }
+export async function unstakePreviouslyLinkedCompanion(forgeBotMintAddress) {
+  const tempFb = await getForgeBotById(forgeBotMintAddress);
+
+  if (tempFb.linked_companion) {
+    const updatedCompanion = await setCompanionUnstaked(tempFb.linked_companion);
+    return updatedCompanion.mint_address;
   }
 
-  return true;
+  return null;
 }
