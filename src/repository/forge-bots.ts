@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
-import { ForgeBot } from '../types';
+import { ForgeBot, SetForgeBotStakedArgs } from '../types';
 
 dotenv.config();
 
@@ -12,6 +12,7 @@ export async function addForgeBot(forgeBot: Omit<ForgeBot, 'created_at'>) {
   const { data, error } = await supabase.from<ForgeBot>(DATABASE_TABLE_NAME).insert([
     {
       ...forgeBot,
+      last_updated: new Date(),
     },
   ]);
 
@@ -23,6 +24,31 @@ export async function addForgeBot(forgeBot: Omit<ForgeBot, 'created_at'>) {
   return data;
 }
 
+export async function setForgeBotStaked({
+  forgeBotMintAddress,
+  walletAddress,
+  linkedCompanionAddress,
+}: SetForgeBotStakedArgs) {
+  const fbData = await updateForgeBot(forgeBotMintAddress, {
+    owner_wallet_address: walletAddress,
+    is_staked: true,
+    linked_companion: linkedCompanionAddress ? linkedCompanionAddress : null,
+    last_updated: new Date(),
+  });
+
+  return fbData;
+}
+
+export async function setForgeBotUnstaked(mintAddress) {
+  const fbData = await updateForgeBot(mintAddress, {
+    is_staked: false,
+    linked_companion: null,
+    last_updated: new Date(),
+  });
+
+  return fbData;
+}
+
 export async function updateForgeBot(
   mintAddress: string,
   forgeBotUpdatedFields: Partial<ForgeBot>
@@ -31,6 +57,7 @@ export async function updateForgeBot(
     .from<ForgeBot>(DATABASE_TABLE_NAME)
     .update({
       ...forgeBotUpdatedFields,
+      last_updated: new Date(),
     })
     .match({ mint_address: mintAddress });
 
@@ -55,4 +82,18 @@ export async function addMultipleForgeBots(
   }
 
   return data;
+}
+
+export async function getForgeBotById(mintAddress: string) {
+  const { data: forgeBotData, error } = await supabase
+    .from<ForgeBot>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('mint_address', mintAddress);
+
+  if (error) {
+    console.error(error);
+    throw Error(`Error retrieving ForgeBot by Mint Address DB: ${error.message} `);
+  }
+
+  return forgeBotData[0];
 }

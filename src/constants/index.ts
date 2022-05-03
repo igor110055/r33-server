@@ -31,3 +31,6 @@ export const WALLET_PASS_PHRASE = process.env.WALLET_PASS_PHRASE;
 // Network
 export const NETWORK_URL = process.env.NETWORK_URL;
 export const connection = new Connection(NETWORK_URL);
+export const confirmedConnection = new Connection(NETWORK_URL, 'confirmed');
+export const finalizedConnection = new Connection(NETWORK_URL, 'finalized');
+export const processedConnection = new Connection(NETWORK_URL, 'processed');

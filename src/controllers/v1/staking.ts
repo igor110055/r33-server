@@ -1,62 +1,75 @@
 import { Router, Request, Response } from 'express';
+import { Companion, ForgeBot } from '../../types';
 
 import {
-  updateForgeBot,
-  updateCompanionByMintAddress,
-  isCompanionEligibleForStaking,
-} from '../../repository';
-import { isNftInWallet } from '../../utils';
-import { connection } from '../../constants';
+  setCompanionStaked,
+  setCompanionUnstaked,
+  setForgeBotStaked,
+  setForgeBotUnstaked,
+} from '../../utils';
 
 async function handleStakeForgeBot(request: Request, response: Response) {
-  const { forgebotNftAddress, walletAddress, companionNftAddress } = request.body;
-  let stakedCompanionMintAddress = null;
+  const { forgeBotNftAddress, walletAddress, companionNftAddress } = request.body;
   let updatedCompanion = null;
+  let updatedForgeBot = null;
 
   try {
-    const isForgeBotOwnedByWallet = await isNftInWallet({
-      walletAddress,
-      nftAddress: forgebotNftAddress,
-      connection,
-    });
-
-    if (!isForgeBotOwnedByWallet) {
-      throw Error('NFT is not owned by this wallet.');
-    }
+    // Doing this method so we can call at the same time
+    const stakingRequests: Promise<ForgeBot | Companion>[] = [
+      setForgeBotStaked({
+        walletAddress,
+        forgeBotMintAddress: forgeBotNftAddress,
+        linkedCompanionAddress: companionNftAddress,
+      }),
+    ];
 
     if (companionNftAddress) {
-      const isCompanionEligible = await isCompanionEligibleForStaking(
-        companionNftAddress,
-        walletAddress
+      stakingRequests.push(
+        setCompanionStaked({
+          mintAddress: companionNftAddress,
+          linkedForgeBotAddress: forgeBotNftAddress,
+          walletAddress,
+        })
       );
-
-      if (isCompanionEligible) {
-        updatedCompanion = await updateCompanionByMintAddress(companionNftAddress, {
-          is_staked: true,
-          linked_forgebot: forgebotNftAddress,
-          owner_wallet_address: walletAddress,
-        });
-      } else {
-        throw Error('Companion Ineligible for Staking...');
-      }
     }
 
-    const forgeBotUpdateResult = await updateForgeBot(forgebotNftAddress, {
-      is_staked: true,
-      owner_wallet_address: walletAddress,
-      linked_companion: updatedCompanion?.mint_address || null,
-    });
+    const [updatedForgeBot, updatedCompanion] = await Promise.all(stakingRequests);
+    // updatedForgeBot = await setForgeBotStaked({
+    //   walletAddress,
+    //   forgeBotMintAddress: forgeBotNftAddress,
+    //   linkedCompanionAddress: companionNftAddress,
+    // });
+
+    // if (companionNftAddress) {
+    //   updatedCompanion = await setCompanionStaked({
+    //     mintAddress: companionNftAddress,
+    //     linkedForgeBotAddress: forgeBotNftAddress,
+    //     walletAddress,
+    //   });
+    // }
 
     return response.json({
       code: 200,
       message: 'Staking successful!',
-      forgeBotData: forgeBotUpdateResult,
+      forgeBotData: updatedForgeBot,
       companionData: updatedCompanion,
     });
   } catch (error) {
+    console.log(`error`, error);
+    // We're unstaking the companions and the forgebot
+    // Just in case we updated one but not the other
+    if (updatedCompanion) {
+      await setCompanionUnstaked(updatedCompanion.mint_address);
+    }
+
+    if (updatedForgeBot) {
+      await setForgeBotUnstaked(updatedForgeBot.mint_address);
+    }
+
     return response.status(500).json({
       code: 500,
       message: 'Error occured when attempting to stake...',
+      error,
     });
   }
 }

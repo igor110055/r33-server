@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
-import { isNftInWallet } from '../utils';
-import { connection } from '../constants';
 import { Companion } from '../types';
 
 dotenv.config();
@@ -14,6 +12,7 @@ export async function addCompanion(companion: Omit<Companion, 'created_at'>) {
   const { data, error } = await supabase.from<Companion>(DATABASE_TABLE_NAME).insert([
     {
       ...companion,
+      last_updated: new Date(),
     },
   ]);
 
@@ -25,6 +24,47 @@ export async function addCompanion(companion: Omit<Companion, 'created_at'>) {
   return data;
 }
 
+interface SetCompanionStakedArgs {
+  mintAddress: string;
+  linkedForgeBotAddress: string;
+  ownerWalletAddress: string;
+}
+
+export async function setCompanionAsStaked({
+  mintAddress,
+  linkedForgeBotAddress,
+  ownerWalletAddress,
+}: SetCompanionStakedArgs) {
+  try {
+    const data = await updateCompanionByMintAddress(mintAddress, {
+      is_staked: true,
+      linked_forgebot: linkedForgeBotAddress,
+      owner_wallet_address: ownerWalletAddress,
+      last_updated: new Date(),
+    });
+
+    return data;
+  } catch (error) {
+    console.log('Error setting Companion as staked', error);
+    throw Error('Error setting Companion as staked');
+  }
+}
+
+export async function setCompanionUnstaked(mintAddress: string) {
+  try {
+    const data = await updateCompanionByMintAddress(mintAddress, {
+      is_staked: false,
+      linked_forgebot: null,
+      last_updated: new Date(),
+    });
+
+    return data;
+  } catch (error) {
+    console.log('Error setting Companion as unstaked', error);
+    throw Error('Error setting Companion as unstaked');
+  }
+}
+
 export async function updateCompanionByMintAddress(
   mintAddress: string,
   companionUpdateFields: Partial<Companion>
@@ -33,6 +73,7 @@ export async function updateCompanionByMintAddress(
     .from<Companion>(DATABASE_TABLE_NAME)
     .update({
       ...companionUpdateFields,
+      last_updated: new Date(),
     })
     .match({ mint_address: mintAddress });
 
@@ -71,34 +112,4 @@ export async function getCompanionById(mintAddress: string) {
   }
 
   return companionData[0];
-}
-
-export async function isCompanionEligibleForStaking(
-  mintAddress: string,
-  walletAddress: string
-) {
-  try {
-    const isCompanionOwnedByWallet = await isNftInWallet({
-      walletAddress,
-      nftAddress: mintAddress,
-      connection,
-    });
-
-    if (!isCompanionOwnedByWallet) {
-      throw Error('NFT is not owned by this wallet.');
-    }
-
-    const tempCompanion = await getCompanionById(mintAddress);
-
-    if (!tempCompanion || tempCompanion.is_staked) {
-      throw Error(`${mintAddress} Companion NFT does not exist, or is already staked!`);
-    }
-
-    return true;
-  } catch (error) {
-    console.log('Error while evaluating the companion:', error);
-    throw Error(
-      'Something went wrong while validating the Companion for staking eligibility...'
-    );
-  }
 }
