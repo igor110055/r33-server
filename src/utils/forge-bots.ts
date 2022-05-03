@@ -33,6 +33,13 @@ export async function setForgeBotStaked({
 }
 
 export async function setForgeBotUnstaked(mintAddress) {
+  const currentFbState = await getForgeBotById(mintAddress);
+
+  if (currentFbState.linked_companion) {
+    // TODO unstake the companion
+    console.log('UNSTAKE THE LINKED COMPANION NOW!!! TODO!!!');
+  }
+
   const updatedForgeBot = await setForgeBotUnstakedApi(mintAddress);
   return updatedForgeBot;
 }
