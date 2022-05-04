@@ -33,14 +33,11 @@ export async function setForgeBotStaked({
 }
 
 export async function setForgeBotUnstaked(mintAddress) {
-  const currentFbState = await getForgeBotById(mintAddress);
-
-  if (currentFbState.linked_companion) {
-    // TODO unstake the companion
-    console.log('UNSTAKE THE LINKED COMPANION NOW!!! TODO!!!');
-  }
-
+  // Companion MUST be unlinked first or else the linked companion will be cleared...
+  // TODO maybe unstaking the FB doens't touch the linked_companion data?
+  await unstakePreviouslyLinkedCompanion(mintAddress);
   const updatedForgeBot = await setForgeBotUnstakedApi(mintAddress);
+
   return updatedForgeBot;
 }
 
@@ -67,10 +64,10 @@ export async function isForgeBotEligibleForStaking({
 }
 
 export async function unstakePreviouslyLinkedCompanion(forgeBotMintAddress) {
-  const tempFb = await getForgeBotById(forgeBotMintAddress);
+  const forgeBot = await getForgeBotById(forgeBotMintAddress);
 
-  if (tempFb.linked_companion) {
-    const updatedCompanion = await setCompanionUnstaked(tempFb.linked_companion);
+  if (forgeBot.linked_companion) {
+    const updatedCompanion = await setCompanionUnstaked(forgeBot.linked_companion);
     return updatedCompanion.mint_address;
   }
 

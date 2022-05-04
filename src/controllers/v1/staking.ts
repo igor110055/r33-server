@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { Companion, ForgeBot } from '../../types';
+import { processedConnection } from '../../constants';
 
 import {
   setCompanionStaked,
@@ -7,22 +8,25 @@ import {
   setForgeBotStaked,
   setForgeBotUnstaked,
   unstakePreviouslyLinkedCompanion,
+  isNftInWallet,
 } from '../../utils';
 
 async function handleStakeForgeBot(request: Request, response: Response) {
-  const { forgeBotNftAddress, walletAddress, companionNftAddress } = request.body;
+  const { forgeBotMintAddress, walletAddress, companionNftAddress } = request.body;
   let updatedCompanion = null;
   let updatedForgeBot = null;
-  let previousCompanion = null;
+  let previousCompanionMintAddress = null;
 
   try {
-    previousCompanion = await unstakePreviouslyLinkedCompanion(forgeBotNftAddress);
+    previousCompanionMintAddress = await unstakePreviouslyLinkedCompanion(
+      forgeBotMintAddress
+    );
 
     // Doing this method so we can call at the same time
     const stakingRequests: Promise<ForgeBot | Companion>[] = [
       setForgeBotStaked({
         walletAddress,
-        forgeBotMintAddress: forgeBotNftAddress,
+        forgeBotMintAddress: forgeBotMintAddress,
         linkedCompanionAddress: companionNftAddress,
       }),
     ];
@@ -31,7 +35,7 @@ async function handleStakeForgeBot(request: Request, response: Response) {
       stakingRequests.push(
         setCompanionStaked({
           mintAddress: companionNftAddress,
-          linkedForgeBotAddress: forgeBotNftAddress,
+          linkedForgeBotAddress: forgeBotMintAddress,
           walletAddress,
         })
       );
@@ -57,10 +61,10 @@ async function handleStakeForgeBot(request: Request, response: Response) {
       await setForgeBotUnstaked(updatedForgeBot.mint_address);
     }
 
-    if (previousCompanion) {
+    if (previousCompanionMintAddress) {
       await setCompanionStaked({
-        mintAddress: previousCompanion,
-        linkedForgeBotAddress: forgeBotNftAddress,
+        mintAddress: previousCompanionMintAddress,
+        linkedForgeBotAddress: forgeBotMintAddress,
         walletAddress,
       });
     }
@@ -74,12 +78,33 @@ async function handleStakeForgeBot(request: Request, response: Response) {
 }
 
 async function handleUnstakeForgeBot(request: Request, response: Response) {
-  const { forgebotNftAddress, walletAddress } = request.body;
+  const { forgeBotMintAddress, walletAddress } = request.body;
+  try {
+    const isForgeBotInWallet = await isNftInWallet({
+      walletAddress,
+      nftAddress: forgeBotMintAddress,
+      connection: processedConnection,
+    });
 
-  return response.json({
-    code: 200,
-    message: 'stub - unstake fb',
-  });
+    // TODO Should we actually forgo this check? - let them unstake if they don't own it anymore?
+    if (!isForgeBotInWallet) {
+      throw Error('ForgeBot not current in wallet, could not unstake!');
+    }
+
+    const updatedForgeBot = await setForgeBotUnstaked(forgeBotMintAddress);
+
+    return response.status(200).json({
+      code: 200,
+      message: `Successfully unstaked ForgeBot ${forgeBotMintAddress}`,
+      data: updatedForgeBot,
+    });
+  } catch (error) {
+    console.log('Error unstaking ForgeBot', error);
+    return response.status(500).json({
+      code: 500,
+      message: 'Failed to unstake ForgeBot',
+    });
+  }
 }
 
 async function handleStakeCompanion(request: Request, response: Response) {
