@@ -8,6 +8,7 @@ import { tokenAccountRouter } from './create-token-account';
 import { stakingRouter } from './staking';
 import { authRouter } from './auth';
 import { accountRouter } from './account';
+import { forgeBotRouter } from './forgebot';
 
 const v1Router = Router();
 
@@ -18,5 +19,6 @@ v1Router.use(Route.Account, accountRouter);
 v1Router.use(Route.TokenAccount, tokenAccountRouter);
 v1Router.use(Route.Staking, stakingRouter);
 v1Router.use(Route.Authentication, authRouter);
+v1Router.use(Route.ForgeBot, forgeBotRouter);
 
 export { v1Router };

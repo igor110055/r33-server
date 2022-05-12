@@ -1,51 +1,10 @@
-import { getCompanionById } from '../repository';
+import { getCompanionById, getForgeBotById } from '../repository';
 import { processedConnection } from '../constants';
 import { isNftInWallet } from './';
-import {
-  setCompanionAsStaked,
-  setCompanionUnstaked as setCompanionUnstakedApi,
-} from '../repository';
-
-interface SetCompanionStakedArgs {
-  mintAddress: string;
-  linkedForgeBotAddress: string;
-  walletAddress: string;
-}
-
-export async function setCompanionStaked({
-  mintAddress,
-  linkedForgeBotAddress,
-  walletAddress,
-}: SetCompanionStakedArgs) {
-  const isCompanionEligible = await isCompanionEligibleForStaking(
-    mintAddress,
-    walletAddress,
-    linkedForgeBotAddress
-  );
-
-  if (!isCompanionEligible) {
-    throw Error('Companion is not eligible for staking.');
-  }
-
-  const updatedCompanionData = setCompanionAsStaked({
-    mintAddress,
-    linkedForgeBotAddress,
-    ownerWalletAddress: walletAddress,
-  });
-
-  return updatedCompanionData;
-}
-
-// TODO Do we need to do user checks here?
-export async function setCompanionUnstaked(mintAddress: string) {
-  const updatedCompanion = await setCompanionUnstakedApi(mintAddress);
-  return updatedCompanion;
-}
 
 export async function isCompanionEligibleForStaking(
   mintAddress: string,
-  walletAddress: string,
-  linkedForgetBotAddress: string
+  walletAddress: string
 ) {
   try {
     const isCompanionOwnedByWallet = await isNftInWallet({
@@ -65,6 +24,52 @@ export async function isCompanionEligibleForStaking(
 
     if (!tempCompanion) {
       throw Error(`${mintAddress} Companion NFT does not exist!`);
+      // console.log(`${mintAddress} Companion NFT does not exist!`);
+      // return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.log('Error while evaluating the companion:', error);
+    throw Error(
+      'Something went wrong while validating the Companion for staking eligibility...'
+    );
+  }
+}
+
+export async function isCompanionEligibleForPairing({
+  companionAddress,
+  pairedForBotAddress,
+  walletAddress,
+}) {
+  try {
+    const [isCompanionOwnedByWallet, isForgeBotOwnedByWallet] = await Promise.all([
+      await isNftInWallet({
+        walletAddress,
+        nftAddress: companionAddress,
+        connection: processedConnection,
+      }),
+      await isNftInWallet({
+        walletAddress,
+        nftAddress: pairedForBotAddress,
+        connection: processedConnection,
+      }),
+    ]);
+
+    if (!isCompanionOwnedByWallet || !isForgeBotOwnedByWallet) {
+      throw Error(
+        `${companionAddress} Companion is owned by wallet: ${isCompanionOwnedByWallet} and linked ForgetBot ${pairedForBotAddress} is owned by wallet ${isForgeBotOwnedByWallet}.`
+      );
+      // return false;
+    }
+
+    const [tempCompanion, tempForgeBot] = await Promise.all([
+      await getCompanionById(companionAddress),
+      await getForgeBotById(pairedForBotAddress),
+    ]);
+
+    if (!tempCompanion || !tempForgeBot) {
+      throw Error(`${companionAddress} Companion NFT of ForgeBot does not exist!`);
       // console.log(`${mintAddress} Companion NFT does not exist!`);
       // return false;
     }

@@ -2,14 +2,18 @@ import { Router, Request, Response } from 'express';
 import { Companion, ForgeBot } from '../../types';
 import { processedConnection } from '../../constants';
 
+import { isNftInWallet } from '../../utils';
+
 import {
-  setCompanionStaked,
-  setCompanionUnstaked,
-  setForgeBotStaked,
+  setCompanionAsUnstaked,
+  setCompanionAsStaked,
+  setEligibleForgeBotStaked,
+  setEligibleCompanionAsStaked,
   setForgeBotUnstaked,
-  unstakePreviouslyLinkedCompanion,
-  isNftInWallet,
-} from '../../utils';
+  unstakeLinkedCompanion,
+  pairEligibleCompanionWithForgeBot,
+  unpairEligibleCompanion,
+} from '../../repository';
 
 async function handleStakeForgeBot(request: Request, response: Response) {
   const { forgeBotMintAddress, walletAddress, companionNftAddress } = request.body;
@@ -18,13 +22,11 @@ async function handleStakeForgeBot(request: Request, response: Response) {
   let previousCompanionMintAddress = null;
 
   try {
-    previousCompanionMintAddress = await unstakePreviouslyLinkedCompanion(
-      forgeBotMintAddress
-    );
+    previousCompanionMintAddress = await unstakeLinkedCompanion(forgeBotMintAddress);
 
     // Doing this method so we can call at the same time
     const stakingRequests: Promise<ForgeBot | Companion>[] = [
-      setForgeBotStaked({
+      setEligibleForgeBotStaked({
         walletAddress,
         forgeBotMintAddress: forgeBotMintAddress,
         linkedCompanionAddress: companionNftAddress,
@@ -33,10 +35,10 @@ async function handleStakeForgeBot(request: Request, response: Response) {
 
     if (companionNftAddress) {
       stakingRequests.push(
-        setCompanionStaked({
+        setEligibleCompanionAsStaked({
           mintAddress: companionNftAddress,
           linkedForgeBotAddress: forgeBotMintAddress,
-          walletAddress,
+          ownerWalletAddress: walletAddress,
         })
       );
     }
@@ -54,7 +56,7 @@ async function handleStakeForgeBot(request: Request, response: Response) {
     // We're unstaking the companions and the forgebot
     // Just in case we updated one but not the other
     if (updatedCompanion) {
-      await setCompanionUnstaked(updatedCompanion.mint_address);
+      await setCompanionAsUnstaked(updatedCompanion.mint_address);
     }
 
     if (updatedForgeBot) {
@@ -62,10 +64,10 @@ async function handleStakeForgeBot(request: Request, response: Response) {
     }
 
     if (previousCompanionMintAddress) {
-      await setCompanionStaked({
+      await setCompanionAsStaked({
         mintAddress: previousCompanionMintAddress,
         linkedForgeBotAddress: forgeBotMintAddress,
-        walletAddress,
+        ownerWalletAddress: walletAddress,
       });
     }
 
@@ -107,22 +109,49 @@ async function handleUnstakeForgeBot(request: Request, response: Response) {
   }
 }
 
-async function handleStakeCompanion(request: Request, response: Response) {
-  const { forgebotNftAddress, companionNftAddress, walletAddress } = request.body;
+async function handlePairCompanion(request: Request, response: Response) {
+  const { forgeBotMintAddress, companionMintAddress, walletAddress } = request.body;
+  try {
+    const pairingData = await pairEligibleCompanionWithForgeBot({
+      mintAddress: companionMintAddress,
+      linkedForgeBotAddress: forgeBotMintAddress,
+      ownerWalletAddress: walletAddress,
+    });
 
-  return response.json({
-    code: 200,
-    message: 'stub - stake companion',
-  });
+    return response.json({
+      code: 200,
+      message: 'Companions Paired!',
+      data: pairingData,
+    });
+  } catch (error) {
+    console.log('Error pairing companion: ', error);
+    return response.status(500).json({
+      code: 500,
+      message: 'Error pairing companion.',
+    });
+  }
 }
 
-async function handleUnstakeCompanion(request: Request, response: Response) {
-  const { companionNftAddress, walletAddress } = request.body;
+async function handleUnpairCompanion(request: Request, response: Response) {
+  const { companionMintAddress, walletAddress } = request.body;
+  try {
+    const pairingData = await unpairEligibleCompanion(
+      companionMintAddress,
+      walletAddress
+    );
 
-  return response.json({
-    code: 200,
-    message: 'stub - unstake companion',
-  });
+    return response.json({
+      code: 200,
+      message: 'Companions Unpaired!',
+      data: pairingData,
+    });
+  } catch (error) {
+    console.log('Error pairing companion: ', error);
+    return response.status(500).json({
+      code: 500,
+      message: 'Error pairing companion',
+    });
+  }
 }
 
 async function handleStakeAll(request: Request, response: Response) {
@@ -147,8 +176,8 @@ async function handleUnstakeAll(request: Request, response: Response) {
 const stakingRouter = Router();
 stakingRouter.post(`/stake-forgebot`, handleStakeForgeBot);
 stakingRouter.post(`/unstake-forgebot`, handleUnstakeForgeBot);
-stakingRouter.post(`/stake-companion`, handleStakeCompanion);
-stakingRouter.post(`/unstake-companion`, handleUnstakeCompanion);
+stakingRouter.post(`/pair-companion`, handlePairCompanion);
+stakingRouter.post(`/unpair-companion`, handleUnpairCompanion);
 stakingRouter.post(`/stake-all`, handleStakeAll);
 stakingRouter.post(`/unstake-all`, handleUnstakeAll);
 

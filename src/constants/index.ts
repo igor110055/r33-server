@@ -11,6 +11,7 @@ export enum Route {
   Staking = '/staking',
   Authentication = '/authentication',
   TokenAccount = '/token-account',
+  ForgeBot = '/forgebot',
 }
 
 // Seeding constants

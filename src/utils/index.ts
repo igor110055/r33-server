@@ -20,4 +20,4 @@ export {
 export { sleep } from './sleep';
 export { generateNewAccountObject } from './account';
 export * from './companions';
-export * from './forge-bots';
+export * from './forgebots';

@@ -2,7 +2,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import forgeBots from './forgebots.json';
-import { addForgeBot } from '../repository/forge-bots';
+import { addForgeBot } from '../repository/forgebots';
 import { ForgeBot } from '../types';
 import { getNftMetaDataFromTokenAddress, sleep } from '../utils';
 
