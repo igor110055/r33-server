@@ -1,9 +1,13 @@
 import { PublicKey, Connection, Keypair } from '@solana/web3.js';
 import { resolveToWalletAddress, getParsedNftAccountsByOwner } from '@nfteyez/sol-rayz';
 import { mnemonicToSeedSync } from 'bip39';
-import { isValidForgebotNft } from './nfts';
+import { isValidCompanionNft, isValidForgeBotNft } from './nfts';
 
-import { WALLET_PASS_PHRASE, WALLET_SEED_PHRASE } from '../constants';
+import {
+  WALLET_PASS_PHRASE,
+  WALLET_SEED_PHRASE,
+  processedConnection,
+} from '../constants';
 
 export const validateWalletAddress = async (address: string, connection: Connection) => {
   try {
@@ -26,7 +30,7 @@ export async function isWalletAuthenticated({
   const nft = walletNfts.find((nft) => nft.mint === nftAddress);
 
   if (nft) {
-    return isValidForgebotNft(nft);
+    return isValidForgeBotNft(nft);
   } else {
     return false;
   }
@@ -63,4 +67,24 @@ export function getServerWallet() {
     gemWallet,
     gemWalletPublicKey,
   };
+}
+
+export async function getForgeBotsByWalletAddress(walletAddress) {
+  const walletNfts = await getParsedNftAccountsByOwner({
+    publicAddress: walletAddress,
+    connection: processedConnection,
+  });
+
+  const forgeBotsInWallet = walletNfts.filter((tempNft) => isValidForgeBotNft(tempNft));
+  return forgeBotsInWallet;
+}
+
+export async function getCompanionsByWalletAddress(walletAddress) {
+  const walletNfts = await getParsedNftAccountsByOwner({
+    publicAddress: walletAddress,
+    connection: processedConnection,
+  });
+
+  const companionsInWallet = walletNfts.filter((tempNft) => isValidCompanionNft(tempNft));
+  return companionsInWallet;
 }

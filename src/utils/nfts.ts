@@ -19,7 +19,7 @@ import {
   COMPANION_CREATOR,
 } from '../constants';
 
-export async function isValidForgebotNft(nft) {
+export function isValidForgeBotNft(nft) {
   return (
     nft.data.symbol === NFT_SYMBOL &&
     nft.updateAuthority === UPDATE_AUTHORITY_ADDRESS &&

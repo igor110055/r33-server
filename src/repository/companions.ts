@@ -2,7 +2,11 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 import { Companion } from '../types';
-import { isCompanionEligibleForStaking, isCompanionEligibleForPairing } from '../utils';
+import {
+  isCompanionEligibleForStaking,
+  isCompanionEligibleForPairing,
+  getCompanionsByWalletAddress,
+} from '../utils';
 import { updateForgeBot, clearLinkedCompanionByCompanionAddress } from './forgebots';
 
 dotenv.config();
@@ -207,4 +211,39 @@ export async function getCompanionById(mintAddress: string) {
   }
 
   return companionData[0];
+}
+
+export async function getCompanionsByWalletAddressDb(walletAddress: string) {
+  const { data: companionData, error } = await supabase
+    .from<Companion>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('owner_wallet_address', walletAddress);
+
+  if (error) {
+    console.error('Error retrieving companions by wallet address:', error);
+    throw Error(`Error retrieving Companions by Wallet Address DB: ${error.message} `);
+  }
+
+  return companionData;
+}
+
+export async function getCompanionByWalletOwnerFromChain(walletAddress: string) {
+  const companionsInWallet = await getCompanionsByWalletAddress(walletAddress);
+
+  try {
+    const companionUpdateRequests = companionsInWallet.map(
+      async (tempCompanion) =>
+        await updateCompanionByMintAddress(tempCompanion.mint, {
+          owner_wallet_address: walletAddress,
+        })
+    );
+
+    const updatedCompanions = await Promise.all(companionUpdateRequests);
+    return updatedCompanions;
+  } catch (error) {
+    console.log('error updating the bots: ', error);
+    throw Error('Error getting ForgeBots in user wallet...');
+  }
+
+  // return forgeBotsInWallet;
 }

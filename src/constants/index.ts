@@ -12,6 +12,9 @@ export enum Route {
   Authentication = '/authentication',
   TokenAccount = '/token-account',
   ForgeBot = '/forgebot',
+  ForgeBots = '/forgebots',
+  Companions = '/companions',
+  Portfolio = '/portfolio',
 }
 
 // Seeding constants

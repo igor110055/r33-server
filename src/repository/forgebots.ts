@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 
 import { ForgeBot, SetForgeBotStakedArgs } from '../types';
-import { isForgeBotEligibleForStaking } from '../utils';
+import { getForgeBotsByWalletAddress, isForgeBotEligibleForStaking } from '../utils';
 
 import { setCompanionAsUnstaked } from './companions';
 
@@ -214,4 +214,34 @@ export async function getForgeBotByLinkedCompanionAddress(linkedCompanionAddress
     .eq('linked_companion', linkedCompanionAddress);
 
   return forgeBotData[0];
+}
+
+export async function getForgeBotsByWalletOwnerFromDb(walletAddress: string) {
+  const { data: forgeBotData, error } = await supabase
+    .from<ForgeBot>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('owner_wallet_address', walletAddress);
+
+  return forgeBotData;
+}
+
+export async function getForgeBotsByWalletOwnerFromChain(walletAddress: string) {
+  const forgeBotsInWallet = await getForgeBotsByWalletAddress(walletAddress);
+
+  try {
+    const forgeBotUpdateRequests = forgeBotsInWallet.map(
+      async (tempForgeBot) =>
+        await updateForgeBot(tempForgeBot.mint, {
+          owner_wallet_address: walletAddress,
+        })
+    );
+
+    const updatedForgeBots = await Promise.all(forgeBotUpdateRequests);
+    return updatedForgeBots;
+  } catch (error) {
+    console.log('error updating the bots: ', error);
+    throw Error('Error getting ForgeBots in user wallet...');
+  }
+
+  // return forgeBotsInWallet;
 }
