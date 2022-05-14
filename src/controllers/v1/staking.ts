@@ -13,7 +13,14 @@ import {
   unstakeLinkedCompanion,
   pairEligibleCompanionWithForgeBot,
   unpairEligibleCompanion,
+  getStakedForgeBotCount,
 } from '../../repository';
+
+let solPrice = 47.33;
+let forgeBotsFloorPrice = 0.4;
+
+// TODO Use these for light caching
+let lastPricingDataUpdate;
 
 async function handleStakeForgeBot(request: Request, response: Response) {
   const { forgeBotMintAddress, walletAddress, companionNftAddress } = request.body;
@@ -172,6 +179,25 @@ async function handleUnstakeAll(request: Request, response: Response) {
   });
 }
 
+async function handleGetStakingData(request: Request, response: Response) {
+  const stakedForgeBotCount = await getStakedForgeBotCount();
+  // TODO get staked companion count and use for the value calc (? for percentage staked as well?)
+
+  const percentageStaked = stakedForgeBotCount / 3333;
+  const valueStakedInSol = stakedForgeBotCount * forgeBotsFloorPrice;
+  const valueStakedInUsd = valueStakedInSol * solPrice;
+
+  return response.json({
+    code: 200,
+    message: 'Forgebot Staking Data',
+    data: {
+      percentageStaked,
+      valueStakedInSol,
+      valueStakedInUsd,
+    },
+  });
+}
+
 // Route assignments
 const stakingRouter = Router();
 stakingRouter.post(`/stake-forgebot`, handleStakeForgeBot);
@@ -180,5 +206,6 @@ stakingRouter.post(`/pair-companion`, handlePairCompanion);
 stakingRouter.post(`/unpair-companion`, handleUnpairCompanion);
 stakingRouter.post(`/stake-all`, handleStakeAll);
 stakingRouter.post(`/unstake-all`, handleUnstakeAll);
+stakingRouter.get(`/data`, handleGetStakingData);
 
 export { stakingRouter };

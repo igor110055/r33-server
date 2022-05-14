@@ -242,6 +242,13 @@ export async function getForgeBotsByWalletOwnerFromChain(walletAddress: string) 
     console.log('error updating the bots: ', error);
     throw Error('Error getting ForgeBots in user wallet...');
   }
+}
 
-  // return forgeBotsInWallet;
+export async function getStakedForgeBotCount() {
+  const { data: forgeBotData, error } = await supabase
+    .from<any>(DATABASE_TABLE_NAME)
+    .select('count', { count: 'exact' })
+    .eq('is_staked', true);
+
+  return forgeBotData[0]?.count;
 }
