@@ -38,3 +38,8 @@ export const connection = new Connection(NETWORK_URL);
 export const confirmedConnection = new Connection(NETWORK_URL, 'confirmed');
 export const finalizedConnection = new Connection(NETWORK_URL, 'finalized');
 export const processedConnection = new Connection(NETWORK_URL, 'processed');
+export const MAGIC_EDEN_API_URL = `https://api-mainnet.magiceden.dev/v2`;
+
+// TIME
+export const ONE_MINUTE_IN_MS = 60000;
+export const FIVE_MINUTES_IN_MS = ONE_MINUTE_IN_MS * 5;

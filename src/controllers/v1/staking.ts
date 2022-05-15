@@ -1,6 +1,12 @@
 import { Router, Request, Response } from 'express';
+import axios from 'axios';
+
 import { Companion, ForgeBot } from '../../types';
-import { processedConnection } from '../../constants';
+import {
+  processedConnection,
+  MAGIC_EDEN_API_URL,
+  FIVE_MINUTES_IN_MS,
+} from '../../constants';
 
 import { isNftInWallet } from '../../utils';
 
@@ -15,12 +21,11 @@ import {
   unpairEligibleCompanion,
   getStakedForgeBotCount,
 } from '../../repository';
+import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
 let solPrice = 47.33;
-let forgeBotsFloorPrice = 0.4;
-
-// TODO Use these for light caching
-let lastPricingDataUpdate;
+let forgeBotsFloorPrice = 0;
+let nextPricingUpdateTime = Date.now();
 
 async function handleStakeForgeBot(request: Request, response: Response) {
   const { forgeBotMintAddress, walletAddress, companionNftAddress } = request.body;
@@ -182,6 +187,19 @@ async function handleUnstakeAll(request: Request, response: Response) {
 async function handleGetStakingData(request: Request, response: Response) {
   const stakedForgeBotCount = await getStakedForgeBotCount();
   // TODO get staked companion count and use for the value calc (? for percentage staked as well?)
+  if (Date.now() > nextPricingUpdateTime) {
+    // TODO Get current solana price
+    const forgeBotsCollectionData = await axios.get(
+      `${MAGIC_EDEN_API_URL}/collections/forgebots/stats`
+    );
+
+    console.log('fetching new data from ME...');
+    // console.log((forgeBotsCollectionData?.data?.floorPrice / LAMPORTS_PER_SOL).toFixed(2));
+    forgeBotsFloorPrice =
+      forgeBotsCollectionData?.data?.floorPrice / LAMPORTS_PER_SOL || 0;
+
+    nextPricingUpdateTime = Date.now() + FIVE_MINUTES_IN_MS;
+  }
 
   const percentageStaked = stakedForgeBotCount / 3333;
   const valueStakedInSol = stakedForgeBotCount * forgeBotsFloorPrice;
@@ -191,6 +209,7 @@ async function handleGetStakingData(request: Request, response: Response) {
     code: 200,
     message: 'Forgebot Staking Data',
     data: {
+      currentForgeBotsFloorPrice: forgeBotsFloorPrice?.toFixed(2),
       percentageStaked,
       valueStakedInSol,
       valueStakedInUsd,
