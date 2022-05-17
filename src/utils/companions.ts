@@ -43,6 +43,21 @@ export async function isCompanionEligibleForPairing({
   walletAddress,
 }) {
   try {
+    const [tempCompanion, tempForgeBot] = await Promise.all([
+      await getCompanionById(companionAddress),
+      await getForgeBotById(pairedForBotAddress),
+    ]);
+
+    if (tempForgeBot.is_overseer) {
+      throw Error('Overseer can not be paired with a Companion Bot!');
+    }
+
+    if (!tempCompanion || !tempForgeBot) {
+      throw Error(`${companionAddress} Companion NFT of ForgeBot does not exist!`);
+      // console.log(`${mintAddress} Companion NFT does not exist!`);
+      // return false;
+    }
+
     const [isCompanionOwnedByWallet, isForgeBotOwnedByWallet] = await Promise.all([
       await isNftInWallet({
         walletAddress,
@@ -60,17 +75,6 @@ export async function isCompanionEligibleForPairing({
       throw Error(
         `${companionAddress} Companion is owned by wallet: ${isCompanionOwnedByWallet} and linked ForgetBot ${pairedForBotAddress} is owned by wallet ${isForgeBotOwnedByWallet}.`
       );
-      // return false;
-    }
-
-    const [tempCompanion, tempForgeBot] = await Promise.all([
-      await getCompanionById(companionAddress),
-      await getForgeBotById(pairedForBotAddress),
-    ]);
-
-    if (!tempCompanion || !tempForgeBot) {
-      throw Error(`${companionAddress} Companion NFT of ForgeBot does not exist!`);
-      // console.log(`${mintAddress} Companion NFT does not exist!`);
       // return false;
     }
 

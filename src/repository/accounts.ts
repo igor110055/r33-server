@@ -5,7 +5,7 @@ import { Account } from '../types';
 
 dotenv.config();
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 const DATA_BASE_TABLE_NAME = 'accounts';
 
 export async function createAccount(account: Omit<Account, 'created_at'>) {

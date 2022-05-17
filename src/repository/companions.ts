@@ -11,7 +11,7 @@ import { updateForgeBot, clearLinkedCompanionByCompanionAddress } from './forgeb
 
 dotenv.config();
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 const DATABASE_TABLE_NAME = 'companions';
 
 interface SetCompanionStakedArgs {

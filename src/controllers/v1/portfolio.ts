@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 
 import { getCompanionByWalletOwnerFromChain } from '../../repository/companions';
 import { getForgeBotsByWalletOwnerFromChain } from '../../repository/forgebots';
+import { getPorfolioEarningData } from '../../repository/portfolio';
 
 async function handleGetAccountsPortfolio(request: Request, response: Response) {
   const { walletAddress } = request.params;
@@ -25,8 +26,28 @@ async function handleGetAccountsPortfolio(request: Request, response: Response) 
   }
 }
 
+async function handleGetPortfolioEarningData(request: Request, response: Response) {
+  const { walletAddress } = request.params;
+  try {
+    const { dailyEarningRate, egemLockedBalance, egemUnclaimedBalance } =
+      await getPorfolioEarningData(walletAddress);
+
+    return response.json({
+      code: 200,
+      message: 'Users portfolio data retrieved...',
+      data: { dailyEarningRate, egemLockedBalance, egemUnclaimedBalance },
+    });
+  } catch (error) {
+    return response.status(500).json({
+      code: 500,
+      message: 'Error getting portfolio by account.',
+    });
+  }
+}
+
 // Route assignments
 const portfolioRouter = Router();
 portfolioRouter.get(`/:walletAddress`, handleGetAccountsPortfolio);
+portfolioRouter.get(`/earning/:walletAddress`, handleGetPortfolioEarningData);
 
 export { portfolioRouter };

@@ -20,8 +20,9 @@ export type Wallet = {
 export type ForgeBot = {
   mint_address: string;
   owner_wallet_address?: string;
-  linked_companion?: string;
+  linked_companion?: string | Companion;
   egems_unclaimed_balance: number;
+  egems_locked_balance: number;
   egems_total_claimed: number;
   is_overseer: boolean;
   is_staked: boolean;

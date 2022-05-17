@@ -43,3 +43,11 @@ export const MAGIC_EDEN_API_URL = `https://api-mainnet.magiceden.dev/v2`;
 // TIME
 export const ONE_MINUTE_IN_MS = 60000;
 export const FIVE_MINUTES_IN_MS = ONE_MINUTE_IN_MS * 5;
+
+// DB
+export const SUPABASE_URL = process.env.SUPABASE_URL;
+export const SUPABASE_DB_KEY = process.env.SUPABASE_DB_KEY;
+
+// Staking
+export const FORGEBOT_DAILY_PAYOUT = process.env.FORGEBOT_DAILY_PAYOUT;
+export const OVERSEER_DAILY_PAYOUT = process.env.OVERSEER_DAILY_PAYOUT;

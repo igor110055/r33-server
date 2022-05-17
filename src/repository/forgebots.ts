@@ -8,7 +8,7 @@ import { setCompanionAsUnstaked } from './companions';
 
 dotenv.config();
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 const DATABASE_TABLE_NAME = 'forgebots';
 
 // Does eligibility checks
@@ -66,7 +66,9 @@ export async function unstakeLinkedCompanion(forgeBotMintAddress) {
   const forgeBot = await getForgeBotById(forgeBotMintAddress);
 
   if (forgeBot.linked_companion) {
-    const updatedCompanion = await setCompanionAsUnstaked(forgeBot.linked_companion);
+    const updatedCompanion = await setCompanionAsUnstaked(
+      forgeBot.linked_companion as string
+    );
     return updatedCompanion.mint_address;
   }
 
@@ -159,6 +161,7 @@ created_at,
 owner_wallet_address,
 egems_unclaimed_balance,
 egems_total_claimed,
+egems_locked_balance,
 linked_companion: companions!forgebots_linked_companion_fkey(
   mint_address,
   created_at,

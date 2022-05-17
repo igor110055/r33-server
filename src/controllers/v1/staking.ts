@@ -189,15 +189,22 @@ async function handleGetStakingData(request: Request, response: Response) {
   // TODO get staked companion count and use for the value calc (? for percentage staked as well?)
   if (Date.now() > nextPricingUpdateTime) {
     // TODO Get current solana price
+    console.log('fetching price data from Binance...');
+    const priceResponse = await axios.get(
+      `https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDC`
+    );
+
     const forgeBotsCollectionData = await axios.get(
       `${MAGIC_EDEN_API_URL}/collections/forgebots/stats`
     );
 
-    console.log('fetching new data from ME...');
-    // console.log((forgeBotsCollectionData?.data?.floorPrice / LAMPORTS_PER_SOL).toFixed(2));
+    console.log('fetching collection data from Magic Eden...');
+
     forgeBotsFloorPrice =
       forgeBotsCollectionData?.data?.floorPrice / LAMPORTS_PER_SOL || 0;
+    solPrice = priceResponse?.data?.price || 0;
 
+    // nextPricingUpdateTime = Date.now() + 1;
     nextPricingUpdateTime = Date.now() + FIVE_MINUTES_IN_MS;
   }
 

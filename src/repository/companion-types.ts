@@ -5,7 +5,7 @@ import { CompanionType } from '../types';
 
 dotenv.config();
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 const DATABASE_TABLE_NAME = 'companion_types';
 
 export async function getCompanionTypes() {

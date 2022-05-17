@@ -10,6 +10,10 @@ export async function isForgeBotEligibleForStaking({
 }: SetForgeBotStakedArgs) {
   const tempForgeBot = await getForgeBotById(forgeBotMintAddress);
 
+  if (tempForgeBot.is_overseer && linkedCompanionAddress) {
+    throw Error('Overseer can not be staked with a Companion');
+  }
+
   const isFbOwnedByWallet = await isNftInWallet({
     walletAddress,
     nftAddress: forgeBotMintAddress,
