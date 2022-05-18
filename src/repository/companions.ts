@@ -213,10 +213,27 @@ export async function getCompanionById(mintAddress: string) {
   return companionData[0];
 }
 
+const companionSchema = `
+  mint_address,
+  created_at,
+  owner_wallet_address,
+  is_staked,
+  image_url,
+  attributes,
+  name,
+  linked_forgebot,
+  companion_type: companion_types(
+    id,
+    name,
+    egem_payout_bonus,
+    display_name
+  )
+`;
+
 export async function getCompanionsByWalletAddressDb(walletAddress: string) {
   const { data: companionData, error } = await supabase
     .from<Companion>(DATABASE_TABLE_NAME)
-    .select('*')
+    .select(companionSchema)
     .eq('owner_wallet_address', walletAddress);
 
   if (error) {
@@ -239,7 +256,17 @@ export async function getCompanionByWalletOwnerFromChain(walletAddress: string) 
     );
 
     const updatedCompanions = await Promise.all(companionUpdateRequests);
-    return updatedCompanions;
+
+    // To get the desired schema (the types as well)
+    const dbCompanions = await getCompanionsByWalletAddressDb(walletAddress);
+
+    const sortedCompanions = dbCompanions.sort((a, b) => {
+      if (a.mint_address > b.mint_address) {
+        return 1;
+      } else return -1;
+    });
+
+    return sortedCompanions;
   } catch (error) {
     console.log('error updating the bots: ', error);
     throw Error('Error getting ForgeBots in user wallet...');

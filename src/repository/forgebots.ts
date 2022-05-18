@@ -240,7 +240,11 @@ export async function getForgeBotsByWalletOwnerFromChain(walletAddress: string) 
     );
 
     const updatedForgeBots = await Promise.all(forgeBotUpdateRequests);
-    return updatedForgeBots;
+    const sortedForgeBots = updatedForgeBots.sort((a, b) =>
+      a.mint_address > b.mint_address ? 1 : -1
+    );
+
+    return sortedForgeBots;
   } catch (error) {
     console.log('error updating the bots: ', error);
     throw Error('Error getting ForgeBots in user wallet...');
