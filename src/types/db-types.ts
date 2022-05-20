@@ -64,4 +64,5 @@ export type CompanionType = {
   name: string;
   egem_payout_bonus: number;
   display_name: string;
+  ui_color: string;
 };

@@ -14,6 +14,7 @@ import {
   OVERSEER_DAILY_PAYOUT,
   FORGEBOT_DAILY_PAYOUT,
 } from '../constants';
+import { ForgeBot } from '../types';
 
 export async function checkAllBotsForPayout() {
   try {
@@ -97,5 +98,60 @@ export async function checkAllBotsForPayout() {
     );
   } catch (error) {
     console.log(`Error while checking bots for staking eligibility`, error);
+  }
+}
+
+// Basically the same, but we unlock egems instead of paying out to the locked balance
+export async function unlockEgems() {
+  try {
+    const checkStartTime = Date.now();
+
+    const stakedBots: ForgeBot[] = await getAllStakedForgeBots();
+    console.log('Checking all bots for unlock eligibility', stakedBots.length);
+
+    for (const tempForgeBot of stakedBots) {
+      let updatedForgeBot;
+      const ownerWallet = tempForgeBot.owner_wallet_address;
+
+      const isForgeBotInWallet = await isNftInWallet({
+        walletAddress: ownerWallet,
+        nftAddress: tempForgeBot.mint_address,
+      });
+
+      const newUnclaimedBalance =
+        tempForgeBot.egems_unclaimed_balance + tempForgeBot.egems_locked_balance;
+
+      console.log(
+        'new unclaimed balance',
+        newUnclaimedBalance,
+        tempForgeBot.egems_unclaimed_balance,
+        tempForgeBot.egems_locked_balance
+      );
+
+      if (isForgeBotInWallet) {
+        updatedForgeBot = await updateForgeBot(tempForgeBot.mint_address, {
+          egems_locked_balance: 0,
+          egems_unclaimed_balance: newUnclaimedBalance,
+        });
+
+        console.log(`Unlocking gems for ${tempForgeBot.mint_address}`);
+      } else {
+        // Clear the staked stuff
+        updatedForgeBot = await setForgeBotUnstakedAndRemoveLockedAndUnclaimedBalances(
+          tempForgeBot.mint_address
+        );
+        console.log(
+          `Staked ForgetBot ${tempForgeBot.mint_address}, (previously) owned by ${ownerWallet} violated staking rules and it's balances were reset.`
+        );
+      }
+      console.log('Check complete.');
+    }
+
+    console.log(
+      'Completed egem unlock took ',
+      formatDistance(new Date(), checkStartTime)
+    );
+  } catch (error) {
+    console.log(`Error while checking bots for egem unlock eligibility`, error);
   }
 }

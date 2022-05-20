@@ -242,7 +242,8 @@ const companionSchema = `
     id,
     name,
     egem_payout_bonus,
-    display_name
+    display_name,
+    ui_color
   )
 `;
 
