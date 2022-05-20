@@ -30,6 +30,7 @@ export type ForgeBot = {
   attributes?: Attribute[];
   name?: string;
   last_updated?: Date;
+  last_locked_egem_allocation?: Date;
 };
 
 export type Companion = {

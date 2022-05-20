@@ -34,6 +34,7 @@ async function formatForgeBot(
     mint_address: forgeBotMintAddress,
     egems_total_claimed: 0,
     egems_unclaimed_balance: 0,
+    egems_locked_balance: 0,
     is_overseer: isOverseer,
     is_staked: false,
     image_url: metadata?.image,

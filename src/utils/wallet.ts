@@ -39,7 +39,7 @@ export async function isWalletAuthenticated({
 export async function isNftInWallet({
   walletAddress,
   nftAddress,
-  connection,
+  connection = processedConnection,
 }): Promise<boolean> {
   const walletNfts = await getParsedNftAccountsByOwner({
     publicAddress: walletAddress,

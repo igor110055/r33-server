@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import { ForgeBot, SetForgeBotStakedArgs } from '../types';
 import { getForgeBotsByWalletAddress, isForgeBotEligibleForStaking } from '../utils';
 
-import { setCompanionAsUnstaked } from './companions';
+import { setCompanionAsUnstaked, setCompanionAsUnstakedAndUnpaired } from './companions';
 
 dotenv.config();
 
@@ -53,22 +53,47 @@ export async function setForgeBotStaked({
 }
 
 export async function setForgeBotUnstaked(mintAddress) {
+  const tempForgeBot = await getForgeBotById(mintAddress);
+
+  if (tempForgeBot.linked_companion) {
+    await setCompanionAsUnstaked(tempForgeBot.linked_companion as string);
+  }
+
   const fbData = await updateForgeBot(mintAddress, {
     is_staked: false,
-    linked_companion: null,
     last_updated: new Date(),
   });
 
   return fbData;
 }
 
-export async function unstakeLinkedCompanion(forgeBotMintAddress) {
+export async function setForgeBotUnstakedAndRemoveLockedAndUnclaimedBalances(
+  mintAddress
+) {
+  const tempForgeBot = await getForgeBotById(mintAddress);
+
+  if (tempForgeBot.linked_companion) {
+    await setCompanionAsUnstaked(tempForgeBot.linked_companion as string);
+  }
+
+  const fbData = await updateForgeBot(mintAddress, {
+    is_staked: false,
+    egems_locked_balance: 0,
+    egems_unclaimed_balance: 0,
+    last_updated: new Date(),
+  });
+
+  return fbData;
+}
+
+export async function unstakeLinkedCompanionAndUnpair(forgeBotMintAddress) {
   const forgeBot = await getForgeBotById(forgeBotMintAddress);
 
   if (forgeBot.linked_companion) {
-    const updatedCompanion = await setCompanionAsUnstaked(
+    const updatedCompanion = await setCompanionAsUnstakedAndUnpaired(
       forgeBot.linked_companion as string
     );
+
     return updatedCompanion.mint_address;
   }
 
@@ -258,4 +283,13 @@ export async function getStakedForgeBotCount() {
     .eq('is_staked', true);
 
   return forgeBotData[0]?.count;
+}
+
+export async function getAllStakedForgeBots() {
+  const { data: forgeBotData, error } = await supabase
+    .from<any>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('is_staked', true);
+
+  return forgeBotData;
 }

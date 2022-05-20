@@ -51,3 +51,6 @@ export const SUPABASE_DB_KEY = process.env.SUPABASE_DB_KEY;
 // Staking
 export const FORGEBOT_DAILY_PAYOUT = process.env.FORGEBOT_DAILY_PAYOUT;
 export const OVERSEER_DAILY_PAYOUT = process.env.OVERSEER_DAILY_PAYOUT;
+export const STAKING_LOCKED_EGEM_PAYOUT_FREQUENCY = JSON.parse(
+  process.env.STAKING_LOCKED_EGEM_PAYOUT_FREQUENCY
+);

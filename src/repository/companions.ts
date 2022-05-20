@@ -132,11 +132,27 @@ export async function setCompanionAsStaked({
   }
 }
 
-export async function setCompanionAsUnstaked(mintAddress: string) {
+// Breaks the ForgeBot link as well
+export async function setCompanionAsUnstakedAndUnpaired(mintAddress: string) {
   try {
     const data = await updateCompanionByMintAddress(mintAddress, {
       is_staked: false,
       linked_forgebot: null,
+      last_updated: new Date(),
+    });
+
+    return data;
+  } catch (error) {
+    console.log('Error setting Companion as unstaked', error);
+    throw Error('Error setting Companion as unstaked');
+  }
+}
+
+// Maintains linked status
+export async function setCompanionAsUnstaked(mintAddress: string) {
+  try {
+    const data = await updateCompanionByMintAddress(mintAddress, {
+      is_staked: false,
       last_updated: new Date(),
     });
 
@@ -229,6 +245,20 @@ const companionSchema = `
     display_name
   )
 `;
+
+export async function getCompanionWithTypeById(mintAddress: string) {
+  const { data: companionData, error } = await supabase
+    .from<Companion>(DATABASE_TABLE_NAME)
+    .select(companionSchema)
+    .eq('mint_address', mintAddress);
+
+  if (error) {
+    console.error(error);
+    throw Error(`Error retrieving Companion by Mint Address DB: ${error.message} `);
+  }
+
+  return companionData[0];
+}
 
 export async function getCompanionsByWalletAddressDb(walletAddress: string) {
   const { data: companionData, error } = await supabase

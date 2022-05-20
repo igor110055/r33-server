@@ -16,7 +16,7 @@ import {
   setEligibleForgeBotStaked,
   setEligibleCompanionAsStaked,
   setForgeBotUnstaked,
-  unstakeLinkedCompanion,
+  unstakeLinkedCompanionAndUnpair,
   pairEligibleCompanionWithForgeBot,
   unpairEligibleCompanion,
   getStakedForgeBotCount,
@@ -28,27 +28,36 @@ let forgeBotsFloorPrice = 0;
 let nextPricingUpdateTime = Date.now();
 
 async function handleStakeForgeBot(request: Request, response: Response) {
-  const { forgeBotMintAddress, walletAddress, companionNftAddress } = request.body;
+  const { forgeBotMintAddress, walletAddress, companionMintAddress } = request.body;
   let updatedCompanion = null;
   let updatedForgeBot = null;
   let previousCompanionMintAddress = null;
 
+  console.log(
+    'beginning staking process: ',
+    forgeBotMintAddress,
+    walletAddress,
+    companionMintAddress
+  );
+
   try {
-    previousCompanionMintAddress = await unstakeLinkedCompanion(forgeBotMintAddress);
+    previousCompanionMintAddress = await unstakeLinkedCompanionAndUnpair(
+      forgeBotMintAddress
+    );
 
     // Doing this method so we can call at the same time
     const stakingRequests: Promise<ForgeBot | Companion>[] = [
       setEligibleForgeBotStaked({
         walletAddress,
         forgeBotMintAddress: forgeBotMintAddress,
-        linkedCompanionAddress: companionNftAddress,
+        linkedCompanionAddress: companionMintAddress,
       }),
     ];
 
-    if (companionNftAddress) {
+    if (companionMintAddress) {
       stakingRequests.push(
         setEligibleCompanionAsStaked({
-          mintAddress: companionNftAddress,
+          mintAddress: companionMintAddress,
           linkedForgeBotAddress: forgeBotMintAddress,
           ownerWalletAddress: walletAddress,
         })
