@@ -1,3 +1,5 @@
-import { NFT, Wallet } from './db-types';
+import { NFT, Wallet, ForgeBot, Companion, CompanionType, Account } from './db-types';
 
-export type { NFT, Wallet };
+export type { NFT, Wallet, ForgeBot, Companion, CompanionType, Account };
+
+export * from './arguments';

@@ -55,7 +55,7 @@ const handleCreateTokenAccount = async (
 };
 
 // Route assignments
-const accountRouter = Router();
-accountRouter.post(`/createTokenAccount`, handleCreateTokenAccount);
+const tokenAccountRouter = Router();
+tokenAccountRouter.post(`/create`, handleCreateTokenAccount);
 
-export { accountRouter };
+export { tokenAccountRouter };

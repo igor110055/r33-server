@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { Wallet } from '../types';
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 
 // ID is same as the NFT Address
 export async function getWalletById(id: string) {

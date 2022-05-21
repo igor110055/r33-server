@@ -5,8 +5,7 @@
 // TODO retry TXs if they fail: https://solanacookbook.com/guides/retrying-transactions.html#before-a-transaction-is-processed
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { mnemonicToSeedSync } from 'bip39';
-import { PublicKey, Connection, Keypair, Commitment } from '@solana/web3.js';
+import { PublicKey, Connection, Commitment } from '@solana/web3.js';
 import {
   getOrCreateAssociatedTokenAccount,
   getAccount,

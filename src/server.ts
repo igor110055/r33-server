@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import cors from 'cors';
 
 import { apiRouter } from './controllers';
-import { getWhitelistFromEnv } from './utils';
+import { getWhitelistFromEnv, startCronJobs } from './utils';
 
 dotenv.config();
 
@@ -27,6 +27,8 @@ const port = process.env.PORT;
 app.use(cors(corsOptions));
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
+startCronJobs();
 
 // Routes
 app.use('/api', apiRouter);

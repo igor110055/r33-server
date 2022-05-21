@@ -4,11 +4,14 @@ import dotenv from 'dotenv';
 dotenv.config();
 import { NFT } from '../types';
 
-const supabase = createClient(process.env.SUPABSE_URL, process.env.SUPABASE_DB_KEY);
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_DB_KEY);
 
 // ID is same as the NFT Address
 export async function getNftById(id: string) {
-  const { data: nftData, error } = await supabase.from<NFT>('nfts').select('*').eq('id', id);
+  const { data: nftData, error } = await supabase
+    .from<NFT>('nfts')
+    .select('*')
+    .eq('id', id);
 
   if (error) {
     console.error(error);
