@@ -48,7 +48,7 @@ export async function isCompanionEligibleForPairing({
       await getForgeBotById(pairedForBotAddress),
     ]);
 
-    if (tempForgeBot.is_overseer) {
+    if (tempForgeBot?.is_overseer) {
       throw Error('Overseer can not be paired with a Companion Bot!');
     }
 

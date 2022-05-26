@@ -66,3 +66,12 @@ export type CompanionType = {
   display_name: string;
   ui_color: string;
 };
+
+export type PayoutReceipt = {
+  id: number;
+  receiving_wallet_address: string;
+  payout_amount: number;
+  tx_hash: string;
+  status: 'unknown' | 'success' | 'failure';
+  created_at: Date | string;
+};

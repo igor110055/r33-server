@@ -5,12 +5,27 @@
 // TODO retry TXs if they fail: https://solanacookbook.com/guides/retrying-transactions.html#before-a-transaction-is-processed
 
 import { Router, Request, Response, NextFunction } from 'express';
-import { PublicKey, Connection, Commitment } from '@solana/web3.js';
 import {
+  PublicKey,
+  Connection,
+  Commitment,
+  Transaction,
+  SystemProgram,
+  TransactionInstruction,
+  sendAndConfirmTransaction,
+  sendAndConfirmRawTransaction,
+} from '@solana/web3.js';
+import {
+  TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddress,
   getOrCreateAssociatedTokenAccount,
   getAccount,
   transfer,
   TokenAccountNotFoundError,
+  createAssociatedTokenAccount,
+  createAssociatedTokenAccountInstruction,
+  createTransferInstruction,
+  createTransferCheckedInstruction,
 } from '@solana/spl-token';
 
 import {
@@ -21,12 +36,17 @@ import {
   recordPayoutAndUpdateCooldownForNft,
   recordPayoutAndUpdateCooldownForWallet,
   getServerWallet,
+  sleep,
 } from '../../utils';
+
+import { SPL_TOKEN_DECIMALS } from '../../constants';
 
 enum CoolDownType {
   Nft,
   Wallet,
 }
+
+const FAILURE_TIMEOUT_MS = 1000;
 
 // Offset to make the tokens into whole digits
 const SPL_TOKEN_DECIMAL_MULTIPLIER = parseInt(process.env.SPL_TOKEN_DECIMAL_MULTIPLIER);
@@ -62,7 +82,10 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
     const { gemWallet } = getServerWallet();
     const recievingAddress = new PublicKey(receivingWalletAddress);
 
-    const connection = new Connection(NETWORK_URL, CONNECTION_COMMITMENT_LEVEL as Commitment);
+    const connection = new Connection(
+      NETWORK_URL,
+      CONNECTION_COMMITMENT_LEVEL as Commitment
+    );
 
     await validateWalletAddress(receivingWalletAddress, connection);
     await validateWalletAddress(gemWallet.publicKey.toBase58(), connection);
@@ -72,7 +95,9 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
       nftAddress,
     });
 
-    const payoutAmount = isAuthenticated ? NFT_AUTHENTICATED_PAYOUT : NON_AUTHENTICATED_PAYOUT;
+    const payoutAmount = isAuthenticated
+      ? NFT_AUTHENTICATED_PAYOUT
+      : NON_AUTHENTICATED_PAYOUT;
 
     const mintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
     const tokenAccountPublicKey = new PublicKey(TOKEN_ACCOUNT_ADDRESS);
@@ -98,7 +123,9 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
         );
       }
     } else {
-      const { isOnCooldown, timeToWaitString } = await isWalletOnCooldown(receivingWalletAddress);
+      const { isOnCooldown, timeToWaitString } = await isWalletOnCooldown(
+        receivingWalletAddress
+      );
       if (isOnCooldown) {
         throw Error(
           `Wallet is still on cooldown. Please wait ${timeToWaitString} before trying again...`
@@ -161,9 +188,11 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
   } catch (error) {
     console.error(error);
 
-    let isRetryAllowed = allRetryAllowedMessage.some((retryAllowedErrorMessage: string) => {
-      return error?.message?.includes(retryAllowedErrorMessage);
-    });
+    let isRetryAllowed = allRetryAllowedMessage.some(
+      (retryAllowedErrorMessage: string) => {
+        return error?.message?.includes(retryAllowedErrorMessage);
+      }
+    );
 
     // TokenAccountNotFound returning this to users
     // body: {message: {name: "TokenAccountNotFoundError"}, isRetryAllowed: false}
@@ -183,8 +212,173 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
   }
 };
 
+async function handleClaimEgemTokens(request: Request, response: Response) {
+  // TODO check the balance on the gem wallet first and throw error is out of gems
+  const { walletAddress } = request.body;
+  const amount = 100;
+
+  const connection = new Connection(
+    NETWORK_URL,
+    CONNECTION_COMMITMENT_LEVEL as Commitment
+  );
+
+  const recipientwalletPublicKey = new PublicKey(walletAddress);
+  const mintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
+  const { gemWallet } = getServerWallet();
+
+  const associatedDestinationTokenAddress = await getAssociatedTokenAddress(
+    mintPublicKey,
+    recipientwalletPublicKey
+  );
+
+  const receiverAccount = await connection.getAccountInfo(
+    associatedDestinationTokenAddress
+  );
+
+  const instructions: TransactionInstruction[] = [];
+
+  if (receiverAccount === null) {
+    // Add instruction to create new token account
+    instructions.push(
+      createAssociatedTokenAccountInstruction(
+        recipientwalletPublicKey,
+        associatedDestinationTokenAddress,
+        recipientwalletPublicKey,
+        mintPublicKey
+      )
+    );
+  }
+
+  const gemWalletTokenAccount = await getOrCreateAssociatedTokenAccount(
+    connection,
+    gemWallet,
+    mintPublicKey,
+    gemWallet.publicKey
+  );
+
+  instructions.push(
+    createTransferCheckedInstruction(
+      gemWalletTokenAccount.address,
+      mintPublicKey,
+      associatedDestinationTokenAddress,
+      gemWallet.publicKey,
+      amount,
+      SPL_TOKEN_DECIMALS
+    )
+  );
+
+  const transaction = new Transaction().add(...instructions);
+  transaction.feePayer = recipientwalletPublicKey;
+  transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+  transaction.partialSign(gemWallet);
+
+  let serializedTx;
+
+  try {
+    serializedTx = transaction.serialize({ requireAllSignatures: false });
+  } catch (error) {
+    console.log('error', error);
+  }
+
+  response.send({
+    statusCode: 200,
+    body: {
+      message: 'Egem payout started!',
+      data: { serializedTx, amount },
+    },
+  });
+
+  // TODO Require Auth here as well
+  // TODO generate the associated transaction and
+  // TODO send it back to the frontend for signing
+}
+
+async function handleFinalizePayoutTransaction(request: Request, response: Response) {
+  console.log('finalizing tx...');
+  const { serializedTx, amount } = request.body;
+  const { gemWallet } = getServerWallet();
+  const connection = new Connection(NETWORK_URL, 'confirmed');
+
+  const tempTx = Transaction.from(Buffer.from(serializedTx, 'base64'));
+  // tempTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+
+  // const serialized2 = tempTx.serialize({ requireAllSignatures: false });
+  let txHash;
+  try {
+    txHash = await sendAndConfirmRawTransaction(connection, serializedTx, {
+      maxRetries: 25,
+    });
+  } catch (error) {
+    console.log('tx error', error);
+    if (!txHash) {
+      // TODO Tx never even went through - we can log a failed tx here and have the user try again
+      console.log('Tx failed with the following error', error);
+    }
+    if (txHash) {
+      await sleep(FAILURE_TIMEOUT_MS);
+      const tx = await connection.getTransaction(txHash);
+
+      console.log(
+        tx,
+        'pre balances \n\n',
+        tx?.meta?.preTokenBalances,
+        '\n\n post balances',
+        tx?.meta?.postTokenBalances
+      );
+
+      const preTokenBalance = tx?.meta?.preTokenBalances;
+      const postTokenBalance = tx?.meta?.postTokenBalances;
+
+      if (preTokenBalance && postTokenBalance) {
+        const preGemWalletTokenBalance = preTokenBalance.find(
+          (balance) => balance.owner === gemWallet.publicKey.toString()
+        );
+        const postGemWalletTokenBalance = postTokenBalance.find(
+          (balance) => balance.owner === gemWallet.publicKey.toString()
+        );
+
+        const preTxAmount = parseInt(preGemWalletTokenBalance?.uiTokenAmount?.amount);
+        const postTxAmount = parseInt(postGemWalletTokenBalance?.uiTokenAmount?.amount);
+        if (preTxAmount - postTxAmount !== amount) {
+          response.status(500).send({
+            statusCode: 500,
+            body: {
+              message: 'Egem payout failure, please try again!',
+              data: txHash,
+            },
+          });
+        }
+        // Or else success - continue
+
+        // But this is failure
+      } else {
+        response.status(500).send({
+          statusCode: 500,
+          body: {
+            message: 'Egem payout failure, please try again!',
+            data: txHash,
+          },
+        });
+      }
+    }
+  }
+
+  // TODO db entry
+  console.log('db entry');
+
+  response.send({
+    statusCode: 200,
+    body: {
+      message: 'Egem payout successful!',
+      data: txHash,
+    },
+  });
+}
+
 // Route assignments
 const payoutRouter = Router();
 payoutRouter.post(`/payout`, handlePayout);
+payoutRouter.post(`/claim`, handleClaimEgemTokens);
+payoutRouter.post(`/finalize-transaction`, handleFinalizePayoutTransaction);
 
 export { payoutRouter };

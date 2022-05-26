@@ -56,3 +56,6 @@ export const STAKING_LOCKED_EGEM_PAYOUT_FREQUENCY = JSON.parse(
 );
 export const STAKING_CHECK_FREQUENCY = process.env.STAKING_CHECK_FREQUENCY;
 export const EGEM_UNLOCK_FREQUENCY = process.env.EGEM_UNLOCK_FREQUENCY;
+
+// Token
+export const SPL_TOKEN_DECIMALS: number = parseInt(process.env.SPL_TOKEN_DECIMALS);

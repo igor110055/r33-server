@@ -28,6 +28,8 @@ let forgeBotsFloorPrice = 0;
 let nextPricingUpdateTime = Date.now();
 
 async function handleStakeForgeBot(request: Request, response: Response) {
+  // TODO Require Auth
+
   const { forgeBotMintAddress, walletAddress, companionMintAddress } = request.body;
   let updatedCompanion = null;
   let updatedForgeBot = null;
@@ -101,6 +103,7 @@ async function handleStakeForgeBot(request: Request, response: Response) {
 }
 
 async function handleUnstakeForgeBot(request: Request, response: Response) {
+  // TODO Require Auth
   const { forgeBotMintAddress, walletAddress } = request.body;
   try {
     const isForgeBotInWallet = await isNftInWallet({
@@ -154,6 +157,8 @@ async function handlePairCompanion(request: Request, response: Response) {
 }
 
 async function handleUnpairCompanion(request: Request, response: Response) {
+  // TODO Require Auth
+
   const { companionMintAddress, walletAddress } = request.body;
   try {
     const pairingData = await unpairEligibleCompanion(
@@ -176,6 +181,7 @@ async function handleUnpairCompanion(request: Request, response: Response) {
 }
 
 async function handleStakeAll(request: Request, response: Response) {
+  // TODO Require Auth
   const { companionNftAddress, walletAddress } = request.body;
 
   return response.json({
@@ -185,6 +191,7 @@ async function handleStakeAll(request: Request, response: Response) {
 }
 
 async function handleUnstakeAll(request: Request, response: Response) {
+  // TODO Require Auth
   const { companionNftAddress, walletAddress } = request.body;
 
   return response.json({
@@ -195,9 +202,8 @@ async function handleUnstakeAll(request: Request, response: Response) {
 
 async function handleGetStakingData(request: Request, response: Response) {
   const stakedForgeBotCount = await getStakedForgeBotCount();
-  // TODO get staked companion count and use for the value calc (? for percentage staked as well?)
+
   if (Date.now() > nextPricingUpdateTime) {
-    // TODO Get current solana price
     console.log('fetching price data from Binance...');
     const priceResponse = await axios.get(
       `https://api.binance.com/api/v3/ticker/price?symbol=SOLUSDC`
@@ -213,7 +219,6 @@ async function handleGetStakingData(request: Request, response: Response) {
       forgeBotsCollectionData?.data?.floorPrice / LAMPORTS_PER_SOL || 0;
     solPrice = priceResponse?.data?.price || 0;
 
-    // nextPricingUpdateTime = Date.now() + 1;
     nextPricingUpdateTime = Date.now() + FIVE_MINUTES_IN_MS;
   }
 
