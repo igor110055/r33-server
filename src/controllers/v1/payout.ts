@@ -280,6 +280,9 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
     console.log('error', error);
   }
 
+  // TODO create new payout transaction in our db here with a blank hash
+  // TODO and return ID in the response so we can match it in finalize
+
   response.send({
     statusCode: 200,
     body: {
