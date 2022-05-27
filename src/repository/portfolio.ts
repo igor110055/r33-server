@@ -33,14 +33,14 @@ linked_companion: companions!forgebots_linked_companion_fkey(
   attributes,
   name,
   avatar_asset_url,
-  last_updated
+  updated_at
 ),
 image_url,
 is_staked,
 is_overseer,
 attributes,
 name,
-last_updated
+updated_at
 `;
 
 export async function getPorfolioEarningData(onwerWalletAddress: string) {

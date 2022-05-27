@@ -29,7 +29,7 @@ export type ForgeBot = {
   image_url?: string;
   attributes?: Attribute[];
   name?: string;
-  last_updated?: Date;
+  updated_at?: Date;
   last_locked_egem_allocation?: Date;
 };
 
@@ -43,7 +43,7 @@ export type Companion = {
   attributes?: Attribute[];
   name?: string;
   avatar_asset_url?: string;
-  last_updated?: Date;
+  updated_at?: Date;
 };
 
 type Attribute = {
@@ -67,11 +67,12 @@ export type CompanionType = {
   ui_color: string;
 };
 
-export type PayoutReceipt = {
+export type PayoutTransaction = {
   id: number;
   receiving_wallet_address: string;
   payout_amount: number;
   tx_hash: string;
-  status: 'unknown' | 'success' | 'failure';
+  status: 'incomplete' | 'unknown' | 'success' | 'failure';
   created_at: Date | string;
+  updated_at: Date | string;
 };

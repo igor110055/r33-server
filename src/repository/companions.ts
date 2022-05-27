@@ -35,7 +35,7 @@ export async function unpairEligibleCompanion(mintAddress, ownerWalletAddress) {
     const companionData = await updateCompanionByMintAddress(mintAddress, {
       linked_forgebot: null,
       owner_wallet_address: ownerWalletAddress,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     let forgeBotData = await clearLinkedCompanionByCompanionAddress(mintAddress);
@@ -67,13 +67,13 @@ export async function pairEligibleCompanionWithForgeBot({
     const companionData = await updateCompanionByMintAddress(mintAddress, {
       linked_forgebot: linkedForgeBotAddress,
       owner_wallet_address: ownerWalletAddress,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     const forgeBotData = await updateForgeBot(linkedForgeBotAddress, {
       owner_wallet_address: ownerWalletAddress,
       linked_companion: mintAddress,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     return { companionData, forgeBotData };
@@ -102,7 +102,7 @@ export async function setEligibleCompanionAsStaked({
       is_staked: true,
       linked_forgebot: linkedForgeBotAddress,
       owner_wallet_address: ownerWalletAddress,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     return data;
@@ -122,7 +122,7 @@ export async function setCompanionAsStaked({
       is_staked: true,
       linked_forgebot: linkedForgeBotAddress,
       owner_wallet_address: ownerWalletAddress,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     return data;
@@ -138,7 +138,7 @@ export async function setCompanionAsUnstakedAndUnpaired(mintAddress: string) {
     const data = await updateCompanionByMintAddress(mintAddress, {
       is_staked: false,
       linked_forgebot: null,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     return data;
@@ -153,7 +153,7 @@ export async function setCompanionAsUnstaked(mintAddress: string) {
   try {
     const data = await updateCompanionByMintAddress(mintAddress, {
       is_staked: false,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
 
     return data;
@@ -168,7 +168,7 @@ export async function addCompanion(companion: Omit<Companion, 'created_at'>) {
   const { data, error } = await supabase.from<Companion>(DATABASE_TABLE_NAME).insert([
     {
       ...companion,
-      last_updated: new Date(),
+      updated_at: new Date(),
     },
   ]);
 
@@ -188,7 +188,7 @@ export async function updateCompanionByMintAddress(
     .from<Companion>(DATABASE_TABLE_NAME)
     .update({
       ...companionUpdateFields,
-      last_updated: new Date(),
+      updated_at: new Date(),
     })
     .match({ mint_address: mintAddress });
 

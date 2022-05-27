@@ -46,7 +46,7 @@ export async function setForgeBotStaked({
     owner_wallet_address: walletAddress,
     is_staked: true,
     linked_companion: linkedCompanionAddress ? linkedCompanionAddress : null,
-    last_updated: new Date(),
+    updated_at: new Date(),
   });
 
   return fbData;
@@ -61,7 +61,7 @@ export async function setForgeBotUnstaked(mintAddress) {
 
   const fbData = await updateForgeBot(mintAddress, {
     is_staked: false,
-    last_updated: new Date(),
+    updated_at: new Date(),
   });
 
   return fbData;
@@ -80,7 +80,7 @@ export async function setForgeBotUnstakedAndRemoveLockedAndUnclaimedBalances(
     is_staked: false,
     egems_locked_balance: 0,
     egems_unclaimed_balance: 0,
-    last_updated: new Date(),
+    updated_at: new Date(),
   });
 
   return fbData;
@@ -107,7 +107,7 @@ export async function clearLinkedCompanionByCompanionAddress(companionMintAddres
   if (tempForgeBot) {
     updatedForgetBot = await updateForgeBot(tempForgeBot.mint_address, {
       linked_companion: null,
-      last_updated: new Date(),
+      updated_at: new Date(),
     });
   }
 
@@ -119,7 +119,7 @@ export async function addForgeBot(forgeBot: Omit<ForgeBot, 'created_at'>) {
   const { data, error } = await supabase.from<ForgeBot>(DATABASE_TABLE_NAME).insert([
     {
       ...forgeBot,
-      last_updated: new Date(),
+      updated_at: new Date(),
     },
   ]);
 
@@ -139,7 +139,7 @@ export async function updateForgeBot(
     .from<ForgeBot>(DATABASE_TABLE_NAME)
     .update({
       ...forgeBotUpdatedFields,
-      last_updated: new Date(),
+      updated_at: new Date(),
     })
     .match({ mint_address: mintAddress });
 
@@ -197,14 +197,14 @@ linked_companion: companions!forgebots_linked_companion_fkey(
   attributes,
   name,
   avatar_asset_url,
-  last_updated
+  updated_at
 ),
 image_url,
 is_staked,
 is_overseer,
 attributes,
 name,
-last_updated
+updated_at
 `;
 
 export async function getForgeBotWithCompanionById(mintAddress: string) {
@@ -258,6 +258,8 @@ export async function getForgeBotsByWalletOwnerFromChain(walletAddress: string) 
 
   try {
     const forgeBotUpdateRequests = forgeBotsInWallet.map(
+      // TODO if already owned do nothing, if new owner, zero out balances as they've
+      // TODO violated staking rules
       async (tempForgeBot) =>
         await updateForgeBot(tempForgeBot.mint, {
           owner_wallet_address: walletAddress,
