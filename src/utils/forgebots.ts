@@ -10,7 +10,7 @@ export async function isForgeBotEligibleForStaking({
 }: SetForgeBotStakedArgs) {
   const tempForgeBot = await getForgeBotById(forgeBotMintAddress);
 
-  if (tempForgeBot.is_overseer && linkedCompanionAddress) {
+  if (tempForgeBot?.is_overseer && linkedCompanionAddress) {
     throw Error('Overseer can not be staked with a Companion');
   }
 
@@ -22,7 +22,7 @@ export async function isForgeBotEligibleForStaking({
 
   if (!isFbOwnedByWallet || !tempForgeBot) {
     throw Error(
-      'ForgeBot does not exist or is not owned by wallet, could not set ForgeBot in the staked status!'
+      `ForgeBot does not exist or is not owned by wallet, could not set ForgeBot in the staked status! ${tempForgeBot?.name}`
     );
   }
 

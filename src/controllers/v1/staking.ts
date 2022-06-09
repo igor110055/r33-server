@@ -20,6 +20,9 @@ import {
   pairEligibleCompanionWithForgeBot,
   unpairEligibleCompanion,
   getStakedForgeBotCount,
+  getUnstakedCompanionsByWalletAddressDb,
+  getUnstakedForgeBotsByWalletOwnerFromDb,
+  getStakedForgeBotsByWalletOwnerFromDb,
 } from '../../repository';
 import { LAMPORTS_PER_SOL } from '@solana/web3.js';
 
@@ -182,17 +185,69 @@ async function handleUnpairCompanion(request: Request, response: Response) {
 
 async function handleStakeAll(request: Request, response: Response) {
   // TODO Require Auth
-  const { companionNftAddress, walletAddress } = request.body;
+  const { walletAddress } = request.body;
 
-  return response.json({
-    code: 200,
-    message: 'stub - stake all fb in wallet (including companions)',
-  });
+  try {
+    const unstakedForgeBots = await getUnstakedForgeBotsByWalletOwnerFromDb(
+      walletAddress
+    );
+    const unstakedCompanions = await getUnstakedCompanionsByWalletAddressDb(
+      walletAddress
+    );
+
+    console.log(unstakedCompanions);
+
+    let updatedBots: ForgeBot[] = [];
+
+    for (let i = 0; i < unstakedForgeBots.length; ++i) {
+      console.log('attempting to stake: ', unstakedForgeBots[i].mint_address);
+      const stakedBot = await setEligibleForgeBotStaked({
+        walletAddress,
+        forgeBotMintAddress: unstakedForgeBots[i].mint_address,
+        linkedCompanionAddress: unstakedCompanions[i]?.mint_address ?? null,
+      });
+
+      updatedBots.push(stakedBot);
+    }
+
+    return response.status(200).json({
+      stakedBots: updatedBots,
+      code: 200,
+      message: `Successfully staked ${updatedBots.length} Forgebots in bulk!`,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      code: 500,
+      message: `Error occured while attempting to stake all ${error || error.message}`,
+    });
+  }
 }
 
 async function handleUnstakeAll(request: Request, response: Response) {
   // TODO Require Auth
-  const { companionNftAddress, walletAddress } = request.body;
+  const { walletAddress } = request.body;
+
+  try {
+    let unstakedBots: ForgeBot[] = [];
+    const stakedForgeBots = await getStakedForgeBotsByWalletOwnerFromDb(walletAddress);
+
+    for (let i = 0; i < stakedForgeBots.length; ++i) {
+      const unstakedBot = await setForgeBotUnstaked(stakedForgeBots[i].mint_address);
+
+      unstakedBots.push(unstakedBot);
+    }
+
+    return response.status(200).json({
+      unstakedBots,
+      code: 200,
+      message: `Successfully unstaked ${unstakedBots.length} Forgebots in bulk!`,
+    });
+  } catch (error) {
+    return response.status(500).json({
+      code: 500,
+      message: `Error occured while attempting to unstake all ${error || error.message}`,
+    });
+  }
 
   return response.json({
     code: 200,

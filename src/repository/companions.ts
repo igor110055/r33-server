@@ -275,6 +275,21 @@ export async function getCompanionsByWalletAddressDb(walletAddress: string) {
   return companionData;
 }
 
+export async function getUnstakedCompanionsByWalletAddressDb(walletAddress: string) {
+  const { data: companionData, error } = await supabase
+    .from<Companion>(DATABASE_TABLE_NAME)
+    .select(companionSchema)
+    .eq('owner_wallet_address', walletAddress)
+    .eq('is_staked', false);
+
+  if (error) {
+    console.error('Error retrieving companions by wallet address:', error);
+    throw Error(`Error retrieving Companions by Wallet Address DB: ${error.message} `);
+  }
+
+  return companionData;
+}
+
 export async function getCompanionByWalletOwnerFromChain(walletAddress: string) {
   const companionsInWallet = await getCompanionsByWalletAddress(walletAddress);
 

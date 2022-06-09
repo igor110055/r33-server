@@ -4,7 +4,11 @@ import dotenv from 'dotenv';
 import { ForgeBot, SetForgeBotStakedArgs } from '../types';
 import { getForgeBotsByWalletAddress, isForgeBotEligibleForStaking } from '../utils';
 
-import { setCompanionAsUnstaked, setCompanionAsUnstakedAndUnpaired } from './companions';
+import {
+  setCompanionAsStaked,
+  setCompanionAsUnstaked,
+  setCompanionAsUnstakedAndUnpaired,
+} from './companions';
 
 dotenv.config();
 
@@ -42,6 +46,14 @@ export async function setForgeBotStaked({
   walletAddress,
   linkedCompanionAddress,
 }: SetForgeBotStakedArgs) {
+  if (linkedCompanionAddress) {
+    await setCompanionAsStaked({
+      ownerWalletAddress: walletAddress,
+      linkedForgeBotAddress: forgeBotMintAddress,
+      mintAddress: linkedCompanionAddress,
+    });
+  }
+
   const fbData = await updateForgeBot(forgeBotMintAddress, {
     owner_wallet_address: walletAddress,
     is_staked: true,
@@ -249,6 +261,41 @@ export async function getForgeBotsByWalletOwnerFromDb(walletAddress: string) {
     .from<ForgeBot>(DATABASE_TABLE_NAME)
     .select('*')
     .eq('owner_wallet_address', walletAddress);
+
+  if (error) {
+    console.error('Error retrieving ForgetBots by wallet address');
+    throw Error(`Error retrieving ForgeBots by wallet address ${error.message}`);
+  }
+
+  return forgeBotData;
+}
+
+export async function getUnstakedForgeBotsByWalletOwnerFromDb(walletAddress: string) {
+  const { data: forgeBotData, error } = await supabase
+    .from<ForgeBot>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('owner_wallet_address', walletAddress)
+    .eq('is_staked', false);
+
+  if (error) {
+    console.error('Error retrieving unstaked ForgetBots by wallet address');
+    throw Error(`Error retrieving unstaked ForgeBots by wallet address ${error.message}`);
+  }
+
+  return forgeBotData;
+}
+
+export async function getStakedForgeBotsByWalletOwnerFromDb(walletAddress: string) {
+  const { data: forgeBotData, error } = await supabase
+    .from<ForgeBot>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('owner_wallet_address', walletAddress)
+    .eq('is_staked', true);
+
+  if (error) {
+    console.error('Error retrieving unstaked ForgetBots by wallet address');
+    throw Error(`Error retrieving unstaked ForgeBots by wallet address ${error.message}`);
+  }
 
   return forgeBotData;
 }
