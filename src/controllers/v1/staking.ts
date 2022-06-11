@@ -78,7 +78,7 @@ async function handleStakeForgeBot(request: Request, response: Response) {
       companionData: updatedCompanion,
     });
   } catch (error) {
-    console.log(`error`, error);
+    console.log(`error staking forgebot`, error);
     // We're unstaking the companions and the forgebot
     // Just in case we updated one but not the other
     if (updatedCompanion) {
@@ -175,7 +175,7 @@ async function handleUnpairCompanion(request: Request, response: Response) {
       data: pairingData,
     });
   } catch (error) {
-    console.log('Error pairing companion: ', error);
+    console.error('Error unpairing companions', error);
     return response.status(500).json({
       code: 500,
       message: 'Error pairing companion',
@@ -216,6 +216,7 @@ async function handleStakeAll(request: Request, response: Response) {
       message: `Successfully staked ${updatedBots.length} Forgebots in bulk!`,
     });
   } catch (error) {
+    console.error('Error staking all: ', error);
     return response.status(500).json({
       code: 500,
       message: `Error occured while attempting to stake all ${error || error.message}`,
@@ -243,16 +244,12 @@ async function handleUnstakeAll(request: Request, response: Response) {
       message: `Successfully unstaked ${unstakedBots.length} Forgebots in bulk!`,
     });
   } catch (error) {
+    console.error('Error unstaking all', error);
     return response.status(500).json({
       code: 500,
       message: `Error occured while attempting to unstake all ${error || error.message}`,
     });
   }
-
-  return response.json({
-    code: 200,
-    message: 'stub - unstake all fb in wallet (including companions)',
-  });
 }
 
 async function handleGetStakingData(request: Request, response: Response) {

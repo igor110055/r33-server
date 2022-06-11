@@ -17,6 +17,10 @@ async function handleGetAccountsPortfolio(request: Request, response: Response) 
     const companionsInWallet = await getCompanionByWalletOwnerFromChain(walletAddress);
     const forgeBotsInWallet = await getForgeBotsByWalletOwnerFromChain(walletAddress);
 
+    console.info(
+      `Wallet address ${walletAddress} has ${companionsInWallet.length} Companions in wallet.`
+    );
+
     return response.json({
       code: 200,
       message: 'Users portfolio data retrieved...',
