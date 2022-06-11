@@ -217,6 +217,9 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
   const { walletAddress } = request.body;
   const amount = 100;
 
+  // TODO do not allow payouts - send a res
+  if (process.env.IS_CLAIM_ENABLED === 'false') return;
+
   const connection = new Connection(
     NETWORK_URL,
     CONNECTION_COMMITMENT_LEVEL as Commitment
