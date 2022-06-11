@@ -9,7 +9,7 @@ async function handleGetAccountsPortfolio(request: Request, response: Response) 
   const { walletAddress } = request.params;
   try {
     const account = await getAccountByWalletAddress(walletAddress);
-    if (!account.wallet_address) {
+    if (!account?.wallet_address) {
       // No account found, create one
       await createAccount(walletAddress);
     }
@@ -26,6 +26,7 @@ async function handleGetAccountsPortfolio(request: Request, response: Response) 
       },
     });
   } catch (error) {
+    console.error(`Error getting users portfolio`, error);
     return response.status(500).json({
       code: 500,
       message: 'Error getting portfolio by account.',
