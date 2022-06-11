@@ -3,10 +3,17 @@ import { Router, Request, Response } from 'express';
 import { getCompanionByWalletOwnerFromChain } from '../../repository/companions';
 import { getForgeBotsByWalletOwnerFromChain } from '../../repository/forgebots';
 import { getPorfolioEarningData } from '../../repository/portfolio';
+import { getAccountByWalletAddress, createAccount } from '../../repository/accounts';
 
 async function handleGetAccountsPortfolio(request: Request, response: Response) {
   const { walletAddress } = request.params;
   try {
+    const account = await getAccountByWalletAddress(walletAddress);
+    if (!account.wallet_address) {
+      // No account found, create one
+      await createAccount(walletAddress);
+    }
+
     const companionsInWallet = await getCompanionByWalletOwnerFromChain(walletAddress);
     const forgeBotsInWallet = await getForgeBotsByWalletOwnerFromChain(walletAddress);
 

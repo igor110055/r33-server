@@ -1,14 +1,12 @@
 import { Router, Request, Response } from 'express';
-import { generateNewAccountObject } from '../../utils';
-import { createAccount as createAccountApi } from '../../repository';
+import { createAccount } from '../../repository';
 
-const createAccount = async (request: Request, response: Response) => {
+const handleCreateAccount = async (request: Request, response: Response) => {
   // TODO Auth Stuff...
   try {
     const { walletAddress } = request.body;
-    const tempAccount = generateNewAccountObject(walletAddress);
 
-    const result = await createAccountApi(tempAccount);
+    const result = await createAccount(walletAddress);
 
     return response.json({
       code: 200,
@@ -26,6 +24,6 @@ const createAccount = async (request: Request, response: Response) => {
 
 // Route assignments
 const accountRouter = Router();
-accountRouter.post(`/create`, createAccount);
+accountRouter.post(`/create`, handleCreateAccount);
 
 export { accountRouter };
