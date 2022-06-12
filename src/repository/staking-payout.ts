@@ -23,6 +23,7 @@ export async function checkAllBotsForPayout() {
     const stakedBots = await getAllStakedForgeBots();
     console.log('Checking all bots for payout eligibility', stakedBots.length);
 
+    // Checking bots one at a time...
     for (const tempForgeBot of stakedBots) {
       console.log(`checking bot ${stakedBots.indexOf(tempForgeBot)}`);
       let bonusPayout = 0;
@@ -35,10 +36,15 @@ export async function checkAllBotsForPayout() {
 
       // Handle companion case (or falsely linked companion)
       if (tempForgeBot.linked_companion) {
+        // Checking if the companion is still in wallet
         const isCompanionInWallet = await isNftInWallet({
           walletAddress: ownerWallet,
           nftAddress: linkedCompanionAddress,
         });
+
+        // TODO Check if companion is still linked to the bot (from the bot)
+        // TODO _and_ companions perspective. This will reduce possibility of
+        // TODO companions being linked twice
 
         if (isCompanionInWallet) {
           const tempCompanion = await getCompanionWithTypeById(linkedCompanionAddress);

@@ -274,7 +274,7 @@ async function handleGetStakingData(request: Request, response: Response) {
     nextPricingUpdateTime = Date.now() + FIVE_MINUTES_IN_MS;
   }
 
-  const percentageStaked = stakedForgeBotCount / 3333;
+  const percentageStaked = (stakedForgeBotCount / 3333) * 100;
   const valueStakedInSol = stakedForgeBotCount * forgeBotsFloorPrice;
   const valueStakedInUsd = valueStakedInSol * solPrice;
 

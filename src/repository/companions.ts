@@ -317,6 +317,4 @@ export async function getCompanionByWalletOwnerFromChain(walletAddress: string) 
     console.log('error updating the companions in users wallet: ', error);
     throw Error('Error getting Companions in user wallet...');
   }
-
-  // return forgeBotsInWallet;
 }
