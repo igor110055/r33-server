@@ -7,7 +7,12 @@ import {
   isCompanionEligibleForPairing,
   getCompanionsByWalletAddress,
 } from '../utils';
-import { updateForgeBot, clearLinkedCompanionByCompanionAddress } from './forgebots';
+import {
+  updateForgeBot,
+  clearLinkedCompanionByCompanionAddress,
+  getForgeBotById,
+  unstakeLinkedCompanionAndUnpair,
+} from './forgebots';
 
 dotenv.config();
 
@@ -135,13 +140,26 @@ export async function setCompanionAsStaked({
 // Breaks the ForgeBot link as well
 export async function setCompanionAsUnstakedAndUnpaired(mintAddress: string) {
   try {
-    const data = await updateCompanionByMintAddress(mintAddress, {
+    const tempCompanion = await getCompanionById(mintAddress);
+    const companionData = await updateCompanionByMintAddress(mintAddress, {
       is_staked: false,
       linked_forgebot: null,
       updated_at: new Date(),
     });
 
-    return data;
+    // If it was even linked to a bot at all...
+    if (tempCompanion.linked_forgebot) {
+      const tempForgeBot = await getForgeBotById(tempCompanion.linked_forgebot);
+
+      // If it matches the previous companion
+      if (tempForgeBot.linked_companion === mintAddress) {
+        await updateForgeBot(tempForgeBot.mint_address, {
+          linked_companion: null,
+        });
+      }
+    }
+
+    return companionData;
   } catch (error) {
     console.log('Error setting Companion as unstaked', error);
     throw Error('Error setting Companion as unstaked');
@@ -272,6 +290,8 @@ export async function getCompanionsByWalletAddressDb(walletAddress: string) {
     throw Error(`Error retrieving Companions by Wallet Address DB: ${error.message} `);
   }
 
+  // Check dupes here!
+
   return companionData;
 }
 
@@ -306,6 +326,9 @@ export async function getCompanionByWalletOwnerFromChain(walletAddress: string) 
     // To get the desired schema (the types as well)
     const dbCompanions = await getCompanionsByWalletAddressDb(walletAddress);
 
+    // TODO determine if we need this
+    // await compareCompanionsInWalletVsDb
+
     const sortedCompanions = dbCompanions.sort((a, b) => {
       if (a.mint_address > b.mint_address) {
         return 1;
@@ -316,5 +339,57 @@ export async function getCompanionByWalletOwnerFromChain(walletAddress: string) 
   } catch (error) {
     console.log('error updating the companions in users wallet: ', error);
     throw Error('Error getting Companions in user wallet...');
+  }
+}
+
+interface CompareCompanionsArgs {
+  dbCompanions: Companion[];
+  companionsInWallet: Array<{
+    mint: string;
+  }>;
+}
+
+// TODO Determine if we actually need this, currently unused
+async function compareCompanionsInWalletVsDb({
+  dbCompanions,
+  companionsInWallet,
+}: CompareCompanionsArgs) {
+  dbCompanions.reduce((accumulator, currentCompanion) => {
+    const tempMatchingCompanion = companionsInWallet.find(
+      (walletCompanion) => walletCompanion.mint === currentCompanion.mint_address
+    );
+
+    if (tempMatchingCompanion) {
+      return [...accumulator, currentCompanion];
+    } else {
+      unstakeLinkedCompanionAndUnpair(currentCompanion.mint_address);
+
+      return accumulator;
+    }
+  }, []);
+}
+
+// TODO Determine if we actually need this, currently unused
+async function checkCompanionLinkedToForgeBot(
+  companionAddress: string,
+  forgeBotAddress: string
+) {
+  try {
+    const tempForgeBot = await getForgeBotById(forgeBotAddress);
+
+    if (tempForgeBot.linked_companion !== companionAddress) {
+      await updateCompanionByMintAddress(companionAddress, {
+        linked_forgebot: null,
+        is_staked: false,
+      });
+
+      await updateForgeBot(forgeBotAddress, {
+        linked_companion: null,
+      });
+    }
+  } catch (error) {
+    console.log('Error checking companion/forgebot link: ', error);
+
+    throw Error(error);
   }
 }
