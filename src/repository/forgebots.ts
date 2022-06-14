@@ -89,6 +89,7 @@ export async function setForgeBotUnstakedAndRemoveLockedAndUnclaimedBalances(
   }
 
   const fbData = await updateForgeBot(mintAddress, {
+    owner_wallet_address: null,
     is_staked: false,
     egems_locked_balance: 0,
     egems_unclaimed_balance: 0,

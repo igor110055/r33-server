@@ -7,6 +7,7 @@ import {
 import {
   getCompanionWithTypeById,
   setCompanionAsUnstakedAndUnpaired,
+  updateCompanionByMintAddress,
 } from './companions';
 import { isNftInWallet } from '../utils';
 import {
@@ -51,8 +52,12 @@ export async function checkAllBotsForPayout() {
           bonusPayout = tempCompanion?.companion_type?.egem_payout_bonus || 0;
         } else {
           await setCompanionAsUnstakedAndUnpaired(linkedCompanionAddress);
+          await updateCompanionByMintAddress(linkedCompanionAddress, {
+            owner_wallet_address: null,
+          });
+
           console.log(
-            `Linked Companion ${linkedCompanionAddress}, (previously) owned by ${ownerWallet} violated staking rules and it is no unlinked.`
+            `Linked Companion ${linkedCompanionAddress}, (previously) owned by ${ownerWallet} violated staking rules and it is now unlinked.`
           );
         }
       }
