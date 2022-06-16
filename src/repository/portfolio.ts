@@ -7,6 +7,7 @@ import {
   OVERSEER_DAILY_PAYOUT,
 } from '../constants';
 import { ForgeBot, Companion, CompanionType } from '../types';
+import { getForgeBotsByWalletOwnerFromDb } from './forgebots';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_DB_KEY);
 const DATABASE_TABLE_NAME = 'forgebots';
@@ -78,4 +79,13 @@ export async function getPorfolioEarningData(onwerWalletAddress: string) {
   }, 0);
 
   return { dailyEarningRate, egemLockedBalance, egemUnclaimedBalance };
+}
+
+export async function getUnclaimedEgemsByWalletAddress(walletAddress: string) {
+  const forgeBotData = await getForgeBotsByWalletOwnerFromDb(walletAddress);
+  const egemUnclaimedBalance = forgeBotData.reduce((unclaimedBalance, currentBot) => {
+    return unclaimedBalance + currentBot.egems_unclaimed_balance;
+  }, 0);
+
+  return egemUnclaimedBalance;
 }

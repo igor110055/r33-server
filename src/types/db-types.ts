@@ -57,6 +57,7 @@ export type Account = {
   egem_unclaimed_balance: number;
   egem_claimed_balance: number;
   image_url?: string;
+  updated_at: Date | string;
 };
 
 export type CompanionType = {
@@ -71,7 +72,8 @@ export type PayoutTransaction = {
   id: number;
   receiving_wallet_address: string;
   payout_amount: number;
-  tx_hash: string;
+  ui_payout_amount: number;
+  tx_hash: string | null;
   status: 'incomplete' | 'unknown' | 'success' | 'failure';
   created_at: Date | string;
   updated_at: Date | string;

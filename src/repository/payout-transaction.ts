@@ -11,13 +11,14 @@ const DATABASE_TABLE_NAME = 'payout_transactions';
 export type CreatePayoutArgs = {
   walletAddress: string;
   amount: number;
+  uiAmount: number;
   txHash?: string;
 };
 
 export async function createPayoutTransaction({
   walletAddress,
   amount,
-  txHash,
+  uiAmount,
 }: CreatePayoutArgs) {
   const { data, error } = await supabase
     .from<PayoutTransaction>(DATABASE_TABLE_NAME)
@@ -26,7 +27,8 @@ export async function createPayoutTransaction({
         receiving_wallet_address: walletAddress,
         payout_amount: amount,
         status: 'incomplete',
-        tx_hash: txHash,
+        tx_hash: null,
+        ui_payout_amount: uiAmount,
       },
     ]);
 
@@ -35,7 +37,7 @@ export async function createPayoutTransaction({
     throw Error(`Error adding new Payout Transaction to DB: ${error.message}`);
   }
 
-  return data;
+  return data[0];
 }
 
 export async function updatePayoutTransaction(
@@ -55,7 +57,7 @@ export async function updatePayoutTransaction(
     throw Error(`Error updating Payout Transaction ${id} in DB: ${error.message}`);
   }
 
-  return data;
+  return data[0];
 }
 
 export async function getPayoutTransactionById(id: number) {

@@ -39,7 +39,15 @@ import {
   sleep,
 } from '../../utils';
 
+import { getUnclaimedEgemsByWalletAddress } from '../../repository/portfolio';
+
 import { SPL_TOKEN_DECIMALS } from '../../constants';
+import {
+  createPayoutTransaction,
+  getPayoutTransactionById,
+  updatePayoutTransaction,
+} from '../../repository/payout-transaction';
+import { updateAccountByWalletAddress } from '../../repository/accounts';
 
 enum CoolDownType {
   Nft,
@@ -215,7 +223,12 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
 async function handleClaimEgemTokens(request: Request, response: Response) {
   // TODO check the balance on the gem wallet first and throw error is out of gems
   const { walletAddress } = request.body;
-  const amount = 100;
+  const amount = await getUnclaimedEgemsByWalletAddress(walletAddress);
+  const decimalAdjustedAmount = amount * 100;
+
+  console.log(
+    `processing started for ${decimalAdjustedAmount} $EGEMS for wallet ${walletAddress}`
+  );
 
   // TODO do not allow payouts - send a res
   if (process.env.IS_CLAIM_ENABLED === 'false') return;
@@ -265,7 +278,7 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
       mintPublicKey,
       associatedDestinationTokenAddress,
       gemWallet.publicKey,
-      amount,
+      decimalAdjustedAmount,
       SPL_TOKEN_DECIMALS
     )
   );
@@ -285,27 +298,34 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
 
   // TODO create new payout transaction in our db here with a blank hash
   // TODO and return ID in the response so we can match it in finalize
+  const payoutTransaction = await createPayoutTransaction({
+    walletAddress,
+    amount: decimalAdjustedAmount,
+    uiAmount: amount,
+  });
 
   response.send({
     statusCode: 200,
     body: {
       message: 'Egem payout started!',
-      data: { serializedTx, amount },
+      data: { serializedTx, amount, transactionId: payoutTransaction.id },
     },
   });
-
-  // TODO Require Auth here as well
-  // TODO generate the associated transaction and
-  // TODO send it back to the frontend for signing
 }
 
 async function handleFinalizePayoutTransaction(request: Request, response: Response) {
   console.log('finalizing tx...');
-  const { serializedTx, amount } = request.body;
+  const { serializedTx, amount, transactionId } = request.body;
   const { gemWallet } = getServerWallet();
   const connection = new Connection(NETWORK_URL, 'confirmed');
 
+  const databaseTransaction = await getPayoutTransactionById(transactionId);
+
   const tempTx = Transaction.from(Buffer.from(serializedTx, 'base64'));
+  const payoutReceiptWalletAddress = tempTx.feePayer.toBase58();
+  console.log(
+    `finalinzing tx for wallet ${payoutReceiptWalletAddress} ${databaseTransaction.receiving_wallet_address} `
+  );
   // tempTx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
 
   // const serialized2 = tempTx.serialize({ requireAllSignatures: false });
@@ -314,12 +334,24 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
     txHash = await sendAndConfirmRawTransaction(connection, serializedTx, {
       maxRetries: 25,
     });
+
+    // TODO here is where i left off...
+    const updatedAccount = await updateAccountByWalletAddress(
+      payoutReceiptWalletAddress,
+      {}
+    );
+
+    // SUCCESS
+    await updatePayoutTransaction(transactionId, {
+      status: 'success',
+    });
   } catch (error) {
     console.log('tx error', error);
     if (!txHash) {
       // TODO Tx never even went through - we can log a failed tx here and have the user try again
       console.log('Tx failed with the following error', error);
     }
+
     if (txHash) {
       await sleep(FAILURE_TIMEOUT_MS);
       const tx = await connection.getTransaction(txHash);
@@ -345,6 +377,7 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
 
         const preTxAmount = parseInt(preGemWalletTokenBalance?.uiTokenAmount?.amount);
         const postTxAmount = parseInt(postGemWalletTokenBalance?.uiTokenAmount?.amount);
+
         if (preTxAmount - postTxAmount !== amount) {
           response.status(500).send({
             statusCode: 500,
@@ -353,11 +386,20 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
               data: txHash,
             },
           });
+        } else {
+          // Or else success - continue
+
+          await updatePayoutTransaction(transactionId, {
+            status: 'success',
+          });
         }
-        // Or else success - continue
 
         // But this is failure
       } else {
+        await updatePayoutTransaction(transactionId, {
+          status: 'failure',
+        });
+
         response.status(500).send({
           statusCode: 500,
           body: {

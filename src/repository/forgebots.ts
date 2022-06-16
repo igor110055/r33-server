@@ -343,3 +343,23 @@ export async function getAllStakedForgeBots() {
 
   return forgeBotData;
 }
+
+export async function resetLockedEgemsByWalletAddress(ownerWalletAddress: string) {
+  try {
+    const ownedForgeBots = await getForgeBotsByWalletOwnerFromDb(ownerWalletAddress);
+
+    const forgeBotUpdateRequests = ownedForgeBots.map(
+      async (tempForgeBot) =>
+        await updateForgeBot(tempForgeBot.mint_address, {
+          egems_unclaimed_balance: 0,
+          egems_total_claimed:
+            tempForgeBot.egems_total_claimed + tempForgeBot.egems_unclaimed_balance,
+        })
+    );
+
+    const updatedForgeBots = await Promise.all(forgeBotUpdateRequests);
+  } catch (error) {
+    console.error(error);
+    throw Error(`Error updating all owned bots after payout! \n\n ${error}`);
+  }
+}
