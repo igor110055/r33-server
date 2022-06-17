@@ -47,7 +47,12 @@ import {
   getPayoutTransactionById,
   updatePayoutTransaction,
 } from '../../repository/payout-transaction';
-import { updateAccountByWalletAddress } from '../../repository/accounts';
+import { resetLockedEgemsByWalletAddress } from '../../repository/forgebots';
+import {
+  updateAccountByWalletAddress,
+  updateAccountEgemBalance,
+} from '../../repository/accounts';
+import { PayoutTransaction } from '../../types';
 
 enum CoolDownType {
   Nft,
@@ -80,6 +85,7 @@ const allRetryAllowedMessage = [
   ACCOUNT_NOT_FOUND,
 ];
 
+// THIS IS THE PAYOUT FOR THE GAME EXPERIENCE (EGEM MINER)
 const handlePayout = async (request: Request, response: Response, next: NextFunction) => {
   try {
     const { receivingWalletAddress, amount, source, nftAddress } = request.body;
@@ -296,8 +302,6 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
     console.log('error', error);
   }
 
-  // TODO create new payout transaction in our db here with a blank hash
-  // TODO and return ID in the response so we can match it in finalize
   const payoutTransaction = await createPayoutTransaction({
     walletAddress,
     amount: decimalAdjustedAmount,
@@ -335,21 +339,16 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
       maxRetries: 25,
     });
 
-    // TODO here is where i left off...
-    const updatedAccount = await updateAccountByWalletAddress(
-      payoutReceiptWalletAddress,
-      {}
-    );
-
     // SUCCESS
-    await updatePayoutTransaction(transactionId, {
-      status: 'success',
-    });
+    onPayoutSuccess({ response, databaseTransaction, txHash });
+    return;
   } catch (error) {
     console.log('tx error', error);
     if (!txHash) {
       // TODO Tx never even went through - we can log a failed tx here and have the user try again
       console.log('Tx failed with the following error', error);
+      await onPayoutFailure({ response, databaseTransaction });
+      return;
     }
 
     if (txHash) {
@@ -379,46 +378,80 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
         const postTxAmount = parseInt(postGemWalletTokenBalance?.uiTokenAmount?.amount);
 
         if (preTxAmount - postTxAmount !== amount) {
-          response.status(500).send({
-            statusCode: 500,
-            body: {
-              message: 'Egem payout failure, please try again!',
-              data: txHash,
-            },
-          });
+          console.error(
+            `Tx was for incorrect amount... \n\n preAmount ${preTxAmount} \n\n postAmount: ${postTxAmount} \n\n amount it should be ${amount}`
+          );
+          await onPayoutFailure({ response, databaseTransaction, txHash });
+          return;
         } else {
-          // Or else success - continue
-
-          await updatePayoutTransaction(transactionId, {
-            status: 'success',
-          });
+          await onPayoutSuccess({ response, databaseTransaction, txHash });
+          return;
         }
-
         // But this is failure
       } else {
-        await updatePayoutTransaction(transactionId, {
-          status: 'failure',
-        });
-
-        response.status(500).send({
-          statusCode: 500,
-          body: {
-            message: 'Egem payout failure, please try again!',
-            data: txHash,
-          },
-        });
+        await onPayoutFailure({ response, databaseTransaction, txHash });
+        return;
       }
     }
   }
 
-  // TODO db entry
-  console.log('db entry');
+  console.log('do we get here?');
+  // TODO clean this up, we should never get here
+  await onPayoutSuccess({ response, databaseTransaction, txHash });
+}
 
-  response.send({
-    statusCode: 200,
+interface PayoutArgs {
+  response: Response;
+  databaseTransaction: PayoutTransaction;
+  txHash?: string;
+}
+
+async function onPayoutSuccess({ response, databaseTransaction, txHash }: PayoutArgs) {
+  try {
+    await resetLockedEgemsByWalletAddress(databaseTransaction.receiving_wallet_address);
+
+    await updatePayoutTransaction(databaseTransaction.id, {
+      status: 'success',
+      tx_hash: txHash,
+    });
+
+    await updateAccountEgemBalance(
+      databaseTransaction.receiving_wallet_address,
+      databaseTransaction.payout_amount
+    );
+
+    response.status(200).send({
+      statusCode: 200,
+      body: {
+        message: 'Egem payout successful!',
+        data: databaseTransaction.tx_hash,
+      },
+    });
+  } catch (error) {
+    console.error('Error finalizaing successful payout', error);
+    response.status(500).send({
+      statusCode: 500,
+      body: {
+        message: 'Egem payout failure, please try again!',
+        data: databaseTransaction.tx_hash,
+      },
+    });
+
+    throw Error(error);
+  }
+}
+
+async function onPayoutFailure({ response, databaseTransaction, txHash }: PayoutArgs) {
+  await updatePayoutTransaction(databaseTransaction.id, {
+    status: 'failure',
+    tx_hash: txHash,
+  });
+
+  response.status(500).send({
+    statusCode: 500,
     body: {
-      message: 'Egem payout successful!',
-      data: txHash,
+      message: 'Egem payout failure, please try again!',
+      data: databaseTransaction.tx_hash,
     },
   });
 }

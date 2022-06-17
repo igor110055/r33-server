@@ -55,7 +55,7 @@ export type Account = {
   wallet_address: string;
   last_access: Date | string;
   egem_unclaimed_balance: number;
-  egem_claimed_balance: number;
+  total_egems_claimed?: number;
   image_url?: string;
   updated_at: Date | string;
 };

@@ -26,6 +26,14 @@ export async function createAccount(walletAddress: string) {
   return data;
 }
 
+export async function updateAccountEgemBalance(walletAddress: string, amount: number) {
+  const account = await getAccountByWalletAddress(walletAddress);
+
+  updateAccountByWalletAddress(walletAddress, {
+    total_egems_claimed: account.total_egems_claimed + amount,
+  });
+}
+
 export async function updateAccountByWalletAddress(
   walletAddress: string,
   accountUpdatedFields: Partial<Account>
