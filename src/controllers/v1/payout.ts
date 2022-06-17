@@ -40,6 +40,7 @@ import {
 } from '../../utils';
 
 import { getUnclaimedEgemsByWalletAddress } from '../../repository/portfolio';
+import { getPayoutIncompleteTransactionsByWalletAddress } from '../../repository/payout-transaction';
 
 import { SPL_TOKEN_DECIMALS } from '../../constants';
 import {
@@ -227,94 +228,128 @@ const handlePayout = async (request: Request, response: Response, next: NextFunc
 };
 
 async function handleClaimEgemTokens(request: Request, response: Response) {
-  // TODO check the balance on the gem wallet first and throw error is out of gems
-  const { walletAddress } = request.body;
-  const amount = await getUnclaimedEgemsByWalletAddress(walletAddress);
-  const decimalAdjustedAmount = amount * 100;
+  try {
+    // TODO check the balance on the gem wallet first and throw error is out of gems
+    const { walletAddress } = request.body;
+    const amount = await getUnclaimedEgemsByWalletAddress(walletAddress);
+    const decimalAdjustedAmount = amount * 100;
 
-  console.log(
-    `processing started for ${decimalAdjustedAmount} $EGEMS for wallet ${walletAddress}`
-  );
+    console.log(
+      `processing started for ${decimalAdjustedAmount} $EGEMS for wallet ${walletAddress}`
+    );
 
-  // TODO do not allow payouts - send a res
-  if (process.env.IS_CLAIM_ENABLED === 'false') return;
+    if (process.env.IS_CLAIM_ENABLED === 'false') {
+      console.error('Payout attempted, but feature is not enabled.');
+      response.status(500).send({
+        statusCode: 500,
+        body: {
+          message: 'Claiming $EGEMS currently not enabled!',
+        },
+      });
+      return;
+    }
 
-  const connection = new Connection(
-    NETWORK_URL,
-    CONNECTION_COMMITMENT_LEVEL as Commitment
-  );
+    const incompleteTransactions = await getPayoutIncompleteTransactionsByWalletAddress(
+      walletAddress
+    );
 
-  const recipientwalletPublicKey = new PublicKey(walletAddress);
-  const mintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
-  const { gemWallet } = getServerWallet();
+    if (incompleteTransactions?.length > 0) {
+      console.error('Payout attempted, but user has an incomplete payout in progress...');
+      response.status(500).send({
+        statusCode: 500,
+        body: {
+          message:
+            'Claiming $EGEMS currently not available until all previous attemps are cleared. Please contact the ForgeBots team.',
+        },
+      });
+      return;
+    }
 
-  const associatedDestinationTokenAddress = await getAssociatedTokenAddress(
-    mintPublicKey,
-    recipientwalletPublicKey
-  );
+    const connection = new Connection(
+      NETWORK_URL,
+      CONNECTION_COMMITMENT_LEVEL as Commitment
+    );
 
-  const receiverAccount = await connection.getAccountInfo(
-    associatedDestinationTokenAddress
-  );
+    const recipientwalletPublicKey = new PublicKey(walletAddress);
+    const mintPublicKey = new PublicKey(TOKEN_MINT_ADDRESS);
+    const { gemWallet } = getServerWallet();
 
-  const instructions: TransactionInstruction[] = [];
+    const associatedDestinationTokenAddress = await getAssociatedTokenAddress(
+      mintPublicKey,
+      recipientwalletPublicKey
+    );
 
-  if (receiverAccount === null) {
-    // Add instruction to create new token account
+    const receiverAccount = await connection.getAccountInfo(
+      associatedDestinationTokenAddress
+    );
+
+    const instructions: TransactionInstruction[] = [];
+
+    if (receiverAccount === null) {
+      // Add instruction to create new token account
+      instructions.push(
+        createAssociatedTokenAccountInstruction(
+          recipientwalletPublicKey,
+          associatedDestinationTokenAddress,
+          recipientwalletPublicKey,
+          mintPublicKey
+        )
+      );
+    }
+
+    const gemWalletTokenAccount = await getOrCreateAssociatedTokenAccount(
+      connection,
+      gemWallet,
+      mintPublicKey,
+      gemWallet.publicKey
+    );
+
     instructions.push(
-      createAssociatedTokenAccountInstruction(
-        recipientwalletPublicKey,
+      createTransferCheckedInstruction(
+        gemWalletTokenAccount.address,
+        mintPublicKey,
         associatedDestinationTokenAddress,
-        recipientwalletPublicKey,
-        mintPublicKey
+        gemWallet.publicKey,
+        decimalAdjustedAmount,
+        SPL_TOKEN_DECIMALS
       )
     );
-  }
 
-  const gemWalletTokenAccount = await getOrCreateAssociatedTokenAccount(
-    connection,
-    gemWallet,
-    mintPublicKey,
-    gemWallet.publicKey
-  );
+    const transaction = new Transaction().add(...instructions);
+    transaction.feePayer = recipientwalletPublicKey;
+    transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+    transaction.partialSign(gemWallet);
 
-  instructions.push(
-    createTransferCheckedInstruction(
-      gemWalletTokenAccount.address,
-      mintPublicKey,
-      associatedDestinationTokenAddress,
-      gemWallet.publicKey,
-      decimalAdjustedAmount,
-      SPL_TOKEN_DECIMALS
-    )
-  );
+    let serializedTx;
 
-  const transaction = new Transaction().add(...instructions);
-  transaction.feePayer = recipientwalletPublicKey;
-  transaction.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-  transaction.partialSign(gemWallet);
+    try {
+      serializedTx = transaction.serialize({ requireAllSignatures: false });
+    } catch (error) {
+      console.log('error', error);
+    }
 
-  let serializedTx;
+    const payoutTransaction = await createPayoutTransaction({
+      walletAddress,
+      amount: decimalAdjustedAmount,
+      uiAmount: amount,
+    });
 
-  try {
-    serializedTx = transaction.serialize({ requireAllSignatures: false });
+    response.send({
+      statusCode: 200,
+      body: {
+        message: 'Egem payout started!',
+        data: { serializedTx, amount, transactionId: payoutTransaction.id },
+      },
+    });
   } catch (error) {
-    console.log('error', error);
+    console.error('Something went wrong starting the payout process...', error);
+    response.status(500).send({
+      statusCode: 500,
+      body: {
+        message: error.message || error.name || error,
+      },
+    });
   }
-
-  const payoutTransaction = await createPayoutTransaction({
-    walletAddress,
-    amount: decimalAdjustedAmount,
-    uiAmount: amount,
-  });
-
-  response.send({
-    statusCode: 200,
-    body: {
-      message: 'Egem payout started!',
-      data: { serializedTx, amount, transactionId: payoutTransaction.id },
-    },
-  });
 }
 
 async function handleFinalizePayoutTransaction(request: Request, response: Response) {
@@ -387,9 +422,9 @@ async function handleFinalizePayoutTransaction(request: Request, response: Respo
           await onPayoutSuccess({ response, databaseTransaction, txHash });
           return;
         }
-        // But this is failure
+        // TODO But this is ... unknown status I believe, confirm this
       } else {
-        await onPayoutFailure({ response, databaseTransaction, txHash });
+        await onPayoutUnknown({ response, databaseTransaction, txHash });
         return;
       }
     }
@@ -406,6 +441,7 @@ interface PayoutArgs {
   txHash?: string;
 }
 
+// TODO move end states to the tx repository
 async function onPayoutSuccess({ response, databaseTransaction, txHash }: PayoutArgs) {
   try {
     await resetLockedEgemsByWalletAddress(databaseTransaction.receiving_wallet_address);
@@ -444,6 +480,21 @@ async function onPayoutSuccess({ response, databaseTransaction, txHash }: Payout
 async function onPayoutFailure({ response, databaseTransaction, txHash }: PayoutArgs) {
   await updatePayoutTransaction(databaseTransaction.id, {
     status: 'failure',
+    tx_hash: txHash,
+  });
+
+  response.status(500).send({
+    statusCode: 500,
+    body: {
+      message: 'Egem payout failure, please try again!',
+      data: databaseTransaction.tx_hash,
+    },
+  });
+}
+
+async function onPayoutUnknown({ response, databaseTransaction, txHash }: PayoutArgs) {
+  await updatePayoutTransaction(databaseTransaction.id, {
+    status: 'unknown',
     tx_hash: txHash,
   });
 

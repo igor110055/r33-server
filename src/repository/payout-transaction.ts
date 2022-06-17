@@ -89,3 +89,22 @@ export async function getPayoutTransactionsByWalletAddress(walletAddress: string
 
   return transactionData;
 }
+
+export async function getPayoutIncompleteTransactionsByWalletAddress(
+  walletAddress: string
+) {
+  const { data: transactionData, error } = await supabase
+    .from<PayoutTransaction>(DATABASE_TABLE_NAME)
+    .select('*')
+    .eq('receiving_wallet_address', walletAddress)
+    .in('status', ['unknown', 'incomplete']);
+
+  if (error) {
+    console.error(error);
+    throw Error(
+      `Error retrieving Transaction by Wallet Address ${walletAddress} from DB: ${error.message} `
+    );
+  }
+
+  return transactionData;
+}
