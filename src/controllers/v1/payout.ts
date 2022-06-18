@@ -40,7 +40,7 @@ import {
 } from '../../utils';
 
 import { getUnclaimedEgemsByWalletAddress } from '../../repository/portfolio';
-import { getPayoutIncompleteTransactionsByWalletAddress } from '../../repository/payout-transaction';
+import { getPayoutUnknownTransactionsByWalletAddress } from '../../repository/payout-transaction';
 
 import { SPL_TOKEN_DECIMALS } from '../../constants';
 import {
@@ -249,11 +249,11 @@ async function handleClaimEgemTokens(request: Request, response: Response) {
       return;
     }
 
-    const incompleteTransactions = await getPayoutIncompleteTransactionsByWalletAddress(
+    const unknownStatusTransactions = await getPayoutUnknownTransactionsByWalletAddress(
       walletAddress
     );
 
-    if (incompleteTransactions?.length > 0) {
+    if (unknownStatusTransactions?.length > 0) {
       console.error('Payout attempted, but user has an incomplete payout in progress...');
       response.status(500).send({
         statusCode: 500,
